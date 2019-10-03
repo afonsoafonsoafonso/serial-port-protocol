@@ -44,12 +44,12 @@ int main(int argc, char** argv)
     newtio.c_lflag = 0;
 
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
 
-  /* 
-    VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
+  /*
+    VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a
     leitura do(s) pr�ximo(s) caracter(es)
   */
 
@@ -69,18 +69,18 @@ int main(int argc, char** argv)
     for (int i = 0; i < 25; i++) {
       buf[i] = 'a';
     }
-    
+
     /*testing*/
     buf[25] = '\0';
-    
-    res = write(fd,buf,26);   
-    printf("%d bytes written\n", res); 
 
-  /* 
-    O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar 
-    o indicado no gui�o 
+    res = write(fd,buf,26);
+    printf("%d bytes written\n", res);
+
+  /*
+    O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar
+    o indicado no gui�o
   */
-    
+
     int i = 0;
     char c;
 
@@ -94,7 +94,7 @@ int main(int argc, char** argv)
     }
 
     printf("%s\n", buf);
-   
+
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
