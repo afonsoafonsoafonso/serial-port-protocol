@@ -77,17 +77,19 @@ int main(int argc, char** argv)
     set[1]=A;
     set[2]=C_SET;
     set[3]=set[1]^set[2];
+    set[4]=FLAG;
     //set sending
     write(fd, set, 5);
     //UA
     unsigned char ua[5];
-    for(int i=0; i<5; i++) {
+    //for(int i=0; i<5; i++) {
         printf("waiting for ua1\n");
-        read(fd, &ua, 1);
+        read(fd, &ua, 5);
         printf("waiting for ua2\n");
-    }
+    //}
     //UA check
-    if(ua[0]!=FLAG || ua[1]!=A || ua[2]!=C_SET || ua[3]!=A^C_UA || ua[4]!=FLAG) {
+    if(ua[0]!=FLAG || ua[1]!=A || ua[2]!=C_UA || ua[3]!=(A^C_UA) || ua[4]!=FLAG) {
+      printf("FLAG:%x \n A:%x \n UA:%x \n BCC:%x \n FLAG:%x \n", ua[0], ua[1], ua[2], ua[3], ua[4]);
       printf("ESTA UA BYTE ESTÁ OH, ASSIM, UMA BALENTE MERDA\n");
       return MERDOU;
     }
