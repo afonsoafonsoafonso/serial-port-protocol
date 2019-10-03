@@ -17,6 +17,8 @@
 #define C_SET 0x03
 #define C_UA 0x07
 
+#define MERDOU -1
+
 volatile int STOP=FALSE;
 
 int main(int argc, char** argv)
@@ -79,13 +81,15 @@ int main(int argc, char** argv)
     write(fd, set, 5);
     //UA
     unsigned char ua[5];
-    for(int i=0; i<5; i++)
-      read(fd, &ua, 1);
+    for(int i=0; i<5; i++) {
+        printf("waiting for ua1\n");
+        read(fd, &ua, 1);
+        printf("waiting for ua2\n");
+    }
     //UA check
     if(ua[0]!=FLAG || ua[1]!=A || ua[2]!=C_SET || ua[3]!=A^C_UA || ua[4]!=FLAG) {
-      int merdou = -1;
       printf("ESTA UA BYTE ESTÁ OH, ASSIM, UMA BALENTE MERDA\n");
-      return merdou;
+      return MERDOU;
     }
 
     for (int i = 0; i < 25; i++) {
