@@ -42,7 +42,7 @@ int main(int argc, char** argv)
     newtio.c_lflag = 0;
 
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
 
@@ -65,9 +65,11 @@ int main(int argc, char** argv)
     char buf[255];
     char c;
     int i = 0;
+    int nr;
 
     while (STOP==FALSE) {
-      read(fd,&c,1);
+      nr=read(fd,&c,1);
+      printf("nc = %d, %c\n", nr, c);
       buf[i] = c;
       i++;
       if (c == '\0') {
@@ -77,7 +79,7 @@ int main(int argc, char** argv)
 
     printf("%s\n", buf);
 
-
+	sleep(1);
   /* 
     O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o 
   */
