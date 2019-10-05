@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #define BAUDRATE B38400
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
@@ -33,7 +35,7 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
-    bzero(&newtio, sizeof(newtio));
+    memset(&newtio, 0, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
@@ -68,7 +70,7 @@ int main(int argc, char** argv)
     int nr;
 
     while (STOP==FALSE) {
-      nr=read(fd,&c,1);
+      nr = read(fd,&c,1);
       printf("nc = %d, %c\n", nr, c);
       buf[i] = c;
       i++;
