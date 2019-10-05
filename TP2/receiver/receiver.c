@@ -11,7 +11,13 @@
 #define FALSE 0
 #define TRUE 1
 
+#define FLAG 0x7e
+#define A 0x03
+#define C_SET 0x03
+#define C_UA 0x07
+
 volatile int STOP=FALSE;
+
 
 int main(int argc, char** argv)
 {
@@ -62,22 +68,67 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-    char buf[255];
     char c;
-    int i = 0;
     int nr;
+    
+    enum state {START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, SSTOP};
+    enum state curr = START;
+
+	char check = 0;
 
     while (STOP==FALSE) {
-      nr=read(fd,&c,1);
-      printf("nc = %d, %c\n", nr, c);
-      buf[i] = c;
-      i++;
-      if (c == '\0') {
-        STOP = TRUE;
-      }
+		nr = read(fd,&c,1);
+		printf("nc = %d, %x\n", nr, (int) c);
+    
+		switch (curr) {
+			case START:
+				if (c == FLAG) {
+					puts("received flag");
+					curr = FLAG_RCV;
+				}
+				break;
+			case FLAG_RCV:
+				if (c == A) {
+					puts("received A");
+					curr = A_RCV;
+					check ^= c;
+				} else if (c == FLAG) {
+				} else {
+					curr = START;
+				}
+				break;
+			case A_RCV:
+				if (c == C_SET) {
+					puts("received C_SET");
+					curr = C_RCV;
+					check ^= c;
+				} else if (c == FLAG) {
+					curr = FLAG_RCV;
+				} else {
+					curr = START;
+				}
+				break;
+			case C_RCV:
+				if (c == check) {
+					puts("BCC is ok");
+					curr = BCC_OK;
+				} else if (c == FLAG) {
+					curr = FLAG_RCV;
+				} else {
+					curr = START;
+				}
+				break;
+			case BCC_OK:
+				if (c == FLAG) {
+					puts("SET END");
+					curr = SSTOP;
+					STOP = TRUE;
+				} else {
+					curr = START;
+				}
+				break;
+		}
     }
-
-    printf("%s\n", buf);
 
 	sleep(1);
   /* 
@@ -86,9 +137,14 @@ int main(int argc, char** argv)
 
     tcflush(fd, TCIOFLUSH);
 
-    int res = write(fd, buf, i);
-    printf("%d bytes resent.\n", res);
+	char answer[] = {FLAG, A, C_UA, A^C_UA, FLAG};
 
+	for (int i = 0; i < 5;) {
+		int res = write(fd, answer + i, 5 - i);
+		i += res;
+		printf("%d bytes resent.\n", res);
+	}
+    
 
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);

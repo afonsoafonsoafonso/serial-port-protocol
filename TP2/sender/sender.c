@@ -12,6 +12,13 @@
 #define FALSE 0
 #define TRUE 1
 
+#define FLAG 0x7e
+#define A 0x03
+#define C_SET 0x03
+#define C_UA 0x07
+
+#define MERDOU -1
+
 volatile int STOP=FALSE;
 
 int main(int argc, char** argv)
@@ -64,7 +71,28 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
-
+    //set masking
+    unsigned char set[5];
+    set[0]=FLAG;
+    set[1]=A;
+    set[2]=C_SET;
+    set[3]=set[1]^set[2];
+    set[4]=FLAG;
+    //set sending
+    write(fd, set, 5);
+    //UA
+    unsigned char ua[5];
+    //for(int i=0; i<5; i++) {
+        printf("waiting for ua1\n");
+        read(fd, &ua, 5);
+        printf("waiting for ua2\n");
+    //}
+    //UA check
+    if(ua[0]!=FLAG || ua[1]!=A || ua[2]!=C_UA || ua[3]!=(A^C_UA) || ua[4]!=FLAG) {
+      printf("FLAG:%x \n A:%x \n UA:%x \n BCC:%x \n FLAG:%x \n", ua[0], ua[1], ua[2], ua[3], ua[4]);
+      printf("ESTA UA BYTE ESTÁ OH, ASSIM, UMA BALENTE MERDA\n");
+      return MERDOU;
+    }
 
     for (int i = 0; i < 25; i++) {
       buf[i] = 'a';
