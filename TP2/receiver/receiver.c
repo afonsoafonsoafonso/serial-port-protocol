@@ -25,7 +25,7 @@ void awaitSet(int serialPortFD) {
     char c;
     int nr;
     
-    enum state {START, FLAG_RCV, A_RCV, C_RCV, BCC_OK, SSTOP};
+    enum state {START, FLAG_RCV, A_RCV, C_RCV, BCC_OK};
     enum state curr = START;
 
 	char check = 0;
@@ -75,16 +75,14 @@ void awaitSet(int serialPortFD) {
 			case BCC_OK:
 				if (c == FLAG) {
 					puts("SET END");
-					curr = SSTOP;
+					STOP = TRUE;
 				} else {
 					curr = START;
 				}
 				break;
-			case SSTOP:
-				STOP = TRUE;
-				break;
 		}
     }
+	puts("exiting funciton");
 }
 
 int main(int argc, char** argv)
