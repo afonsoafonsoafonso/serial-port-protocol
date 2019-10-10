@@ -37,13 +37,13 @@ void awaitSet(int serialPortFD) {
 		switch (curr) {
 			case START:
 				if (c == FLAG) {
-					puts("received flag");
+					puts("Received Flag");
 					curr = FLAG_RCV;
 				}
 				break;
 			case FLAG_RCV:
 				if (c == A) {
-					puts("received A");
+					puts("Received A");
 					curr = A_RCV;
 					check ^= c;
 				} else if (c == FLAG) {
@@ -53,7 +53,7 @@ void awaitSet(int serialPortFD) {
 				break;
 			case A_RCV:
 				if (c == C_SET) {
-					puts("received C_SET");
+					puts("Received C_SET");
 					curr = C_RCV;
 					check ^= c;
 				} else if (c == FLAG) {
@@ -82,7 +82,7 @@ void awaitSet(int serialPortFD) {
 				break;
 		}
     }
-	puts("exiting funciton");
+	puts("Exiting.");
 }
 
 int main(int argc, char** argv)
