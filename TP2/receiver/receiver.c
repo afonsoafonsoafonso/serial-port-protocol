@@ -22,6 +22,7 @@
 volatile int STOP=FALSE;
 
 void awaitSet(int serialPortFD) {
+	tcflush(serialPortFD, TCIOFLUSH);
     char c;
     int nr;
     
@@ -30,6 +31,7 @@ void awaitSet(int serialPortFD) {
 
 	char check = 0;
 
+	int STOP = FALSE;
     while (STOP==FALSE) {
 		nr = read(serialPortFD, &c, 1);
 		printf("nc = %d, %x\n", nr, (int) c);
@@ -132,14 +134,15 @@ int main(int argc, char** argv)
 
     printf("New termios structure set\n");
 
+	
 	awaitSet(fd);
 
-	sleep(1);
-  /* 
-    O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o 
-  */
+	//sleep(1);
+	/* 
+		O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o 
+	*/
 
-    tcflush(fd, TCIOFLUSH);
+	tcflush(fd, TCIOFLUSH);
 
 	char answer[] = {FLAG, A, C_UA, A^C_UA, FLAG};
 
@@ -148,9 +151,10 @@ int main(int argc, char** argv)
 		i += res;
 		printf("%d bytes resent.\n", res);
 	}
+	
     
 
-    tcsetattr(fd,TCSANOW,&oldtio);
+    tcsetattr(fd, TCSANOW, &oldtio);
     close(fd);
     return 0;
 }
