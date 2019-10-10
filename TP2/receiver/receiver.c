@@ -99,8 +99,8 @@ int main(int argc, char** argv)
   */
   
     
-    fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY );
-    if (fd <0) {perror("/dev/ttyS0"); exit(-1); }
+    fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY );
+    if (fd <0) {perror("/dev/ttyS2"); exit(-1); }
 
     if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
       perror("tcgetattr");

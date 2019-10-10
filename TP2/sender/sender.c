@@ -23,7 +23,11 @@
 #define C_SET 0x03
 #define C_UA 0x07
 
+#define MAX_TRIES 3
+
 #define ERROR -1
+
+int timeout_count = 0;
 
 int receiveUA(int serialPortFD) {
   tcflush(serialPortFD, TCIOFLUSH);
@@ -102,7 +106,10 @@ int receiveUA(int serialPortFD) {
 }
 
 void alarmHandler(int sig) {
+  timeout_count++;
   puts("Time out signal.");
+  if(timeout_count>=MAX_TRIES)
+    printf("Exceeded maximum number of tries (%d).\n", MAX_TRIES);
   return;
 }
 
@@ -117,7 +124,7 @@ int main(int argc, char **argv) {
     because we don't want to get killed if linenoise sends CTRL-C.
   */
 
-  fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
+  fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY);
   if (fd < 0) {
     perror(argv[1]);
     exit(-1);
@@ -165,7 +172,7 @@ int main(int argc, char **argv) {
 
   int STOP = FALSE;
 
-  while (STOP == FALSE) {
+  while (STOP == FALSE && timeout_count<MAX_TRIES) {
     unsigned char set[5];
     set[0] = FLAG;
     set[1] = A;
@@ -183,6 +190,7 @@ int main(int argc, char **argv) {
     if (receiveUA(fd) == 0) {
       printf("UA received\n");
       STOP = TRUE;
+      timeout_count = 0;
     }
     alarm(0);
   }
