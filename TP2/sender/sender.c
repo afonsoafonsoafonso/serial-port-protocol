@@ -30,7 +30,6 @@
 int timeout_count = 0;
 
 int receiveUA(int serialPortFD) {
-  tcflush(serialPortFD, TCIOFLUSH);
   char c;
   int nr;
 
@@ -181,11 +180,11 @@ int main(int argc, char **argv) {
     set[4] = FLAG;
     // set sending
     tcflush(fd, TCIOFLUSH);
-    //sleep(1);
     int w = write(fd, set, 5);
 
     printf("SET sent ; W:%d\n", w);
-    alarm(2);
+
+    alarm(4);
 
     if (receiveUA(fd) == 0) {
       printf("UA received\n");
@@ -194,11 +193,11 @@ int main(int argc, char **argv) {
     }
     alarm(0);
   }
-
+/*
   for (int i = 0; i < 25; i++) {
     buf[i] = 'a';
   }
-
+*/
   /*testing*/
   /*
   buf[25] = '\0';
