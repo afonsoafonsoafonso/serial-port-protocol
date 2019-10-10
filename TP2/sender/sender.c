@@ -1,5 +1,6 @@
 /*Non-Canonical Input Processing*/
 
+#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -95,6 +96,13 @@ int receiveUA(int serialPortFD) {
     }
   }
   puts("Exiting.");
+
+  return 0;
+}
+
+void alarmHandler(int sig) {
+  puts("Alarm signal.");
+  return;
 }
 
 int main(int argc, char **argv) {
@@ -144,8 +152,14 @@ int main(int argc, char **argv) {
 
   printf("New termios structure set\n");
 
-  // set masking
-  // UA
+  //Alarm handler setup
+  struct sigaction oldSigAction;
+  struct sigaction sigHandler;
+  sigHandler.sa_handler = alarmHandler;
+  sigemptyset(&sigHandler.sa_mask);
+
+  sigaction(SIGALRM, &sigHandler, &oldSigAction);
+
 
   while (STOP == FALSE) {
     unsigned char set[5];
@@ -179,6 +193,8 @@ int main(int argc, char **argv) {
   */
 
   printf("%s\n", buf);
+
+  sigaction(SIGALRM, &oldSigAction, NULL);
 
   if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
     perror("tcsetattr");
