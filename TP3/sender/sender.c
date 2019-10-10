@@ -23,11 +23,15 @@
 #define C_SET 0x03
 #define C_UA 0x07
 
+#define C_N0 0x00
+#define C_N1 0x40
+#define RR0 0x85
+#define RR1 0x05
+
 #define MAX_TRIES 3
+int timeout_count = 0;
 
 #define ERROR -1
-
-int timeout_count = 0;
 
 int receiveUA(int serialPortFD) {
   char c;
@@ -184,7 +188,7 @@ int main(int argc, char **argv) {
 
     printf("SET sent ; W:%d\n", w);
 
-    alarm(4);
+    alarm(3);
 
     if (receiveUA(fd) == 0) {
       printf("UA received\n");
@@ -192,6 +196,33 @@ int main(int argc, char **argv) {
       timeout_count = 0;
     }
     alarm(0);
+  }
+
+  STOP = FALSE;
+  timeout_count = 0;
+
+  while (STOP == FALSE && timeout_count<MAX_TRIES) {
+    unsigned char bcc2;
+    unsigned char inf[6+20]; //6 das merdas de controlo e 20 a's para encher chouriço
+    inf[0] = FLAG;
+    inf[1] = A;
+    inf[2] = 0x00; //para já. depois altera-se consoante o protocolo (0 ou 1)
+    inf[3] = inf[1] ^ inf[2];
+    for(int i=4; i<25; i++) { //enche D4-D24 com lixo para teste
+      inf[i]='a';
+      if(i==4) bcc2 = inf[i];
+      else bcc2 = bcc2^inf[i];
+    }
+    inf[25] = bcc2;
+    inf[26] = FLAG;
+
+    // I packet sending
+    tcflush(fd, TCIOFLUSH);
+    int w = write(fd, inf, 5);
+
+    printf("I packet sent ; W:%d\n", w); 
+
+    STOP = TRUE;
   }
 /*
   for (int i = 0; i < 25; i++) {
