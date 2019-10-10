@@ -25,9 +25,8 @@
 
 #define ERROR -1
 
-volatile int STOP = FALSE;
-
 int receiveUA(int serialPortFD) {
+  tcflush(serialPortFD, TCIOFLUSH);
   char c;
   int nr;
 
@@ -36,7 +35,9 @@ int receiveUA(int serialPortFD) {
 
   char check = 0;
 
+  int STOP = FALSE;
   while (STOP == FALSE) {
+    puts("Awaiting byte");
     nr = read(serialPortFD, &c, 1);
     if (nr < 0) {
       if (errno == EINTR) {
@@ -101,7 +102,7 @@ int receiveUA(int serialPortFD) {
 }
 
 void alarmHandler(int sig) {
-  puts("Alarm signal.");
+  puts("Time out signal.");
   return;
 }
 
@@ -153,13 +154,16 @@ int main(int argc, char **argv) {
   printf("New termios structure set\n");
 
   //Alarm handler setup
-  struct sigaction oldSigAction;
-  struct sigaction sigHandler;
-  sigHandler.sa_handler = alarmHandler;
-  sigemptyset(&sigHandler.sa_mask);
+  //struct sigaction oldSigAction;
+  //struct sigaction sigHandler;
+  //sigHandler.sa_handler = alarmHandler;
 
-  sigaction(SIGALRM, &sigHandler, &oldSigAction);
+  if (signal(SIGALRM, alarmHandler) || siginterrupt(SIGALRM, 1)) {
+      printf("sigaction failed\n");
+      return ERROR;
+  }
 
+  int STOP = FALSE;
 
   while (STOP == FALSE) {
     unsigned char set[5];
@@ -169,12 +173,18 @@ int main(int argc, char **argv) {
     set[3] = set[1] ^ set[2];
     set[4] = FLAG;
     // set sending
-    write(fd, set, 5);
-    alarm(5);
+    tcflush(fd, TCIOFLUSH);
+    //sleep(1);
+    int w = write(fd, set, 5);
+
+    printf("SET sent ; W:%d\n", w);
+    alarm(2);
 
     if (receiveUA(fd) == 0) {
+      printf("UA received\n");
       STOP = TRUE;
     }
+    alarm(0);
   }
 
   for (int i = 0; i < 25; i++) {
@@ -182,19 +192,20 @@ int main(int argc, char **argv) {
   }
 
   /*testing*/
+  /*
   buf[25] = '\0';
 
   res = write(fd, buf, 26);
   printf("%d bytes written\n", res);
-
+  */
   /*
     O ciclo FOR e as instru��es seguintes devem ser alterados de modo a
     respeitar o indicado no gui�o
   */
 
-  printf("%s\n", buf);
+  //printf("%s\n", buf);
 
-  sigaction(SIGALRM, &oldSigAction, NULL);
+  //sigaction(SIGALRM, &oldSigAction, NULL);
 
   if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
     perror("tcsetattr");
