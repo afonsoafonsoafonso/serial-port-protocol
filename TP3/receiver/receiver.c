@@ -22,9 +22,9 @@
 #define C_N1 0x40
 #define C_RR0 0x85
 #define C_RR1 0x05
-#define C_DISC 
-#define C_REJ0
-#define C_REJ1
+#define C_DISC 0x0B
+#define C_REJ0 0x81
+#define C_REJ1 0x01
 
 struct header {
   char address;
@@ -61,10 +61,7 @@ int readHeader(int fd, struct header *header) {
       }
       break;
     case A_RCV:
-      if (c == C_DISC) {
-        check ^= c;
-        header->control = c;
-      } else if (c == C_N0 || c == C_N1) {
+      if (c == C_DISC || c == C_N0 || c == C_N1) {
         check ^= c;
         header->control = c;
       } else {
