@@ -164,11 +164,11 @@ int main(int argc, char **argv) {
   printf("New termios structure set\n");
 
   //Alarm handler setup
-  //struct sigaction oldSigAction;
-  //struct sigaction sigHandler;
-  //sigHandler.sa_handler = alarmHandler;
+  struct sigaction oldSigAction;
+  struct sigaction sigHandler;
+  sigHandler.sa_handler = alarmHandler;
 
-  if (signal(SIGALRM, alarmHandler) || siginterrupt(SIGALRM, 1)) {
+  if (sigaction(SIGALRM, &sigHandler, &oldSigAction) || siginterrupt(SIGALRM, 1)) {
       printf("sigaction failed\n");
       return ERROR;
   }
@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
 
   //printf("%s\n", buf);
 
-  //sigaction(SIGALRM, &oldSigAction, NULL);
+  sigaction(SIGALRM, &oldSigAction, NULL);
 
   if (tcsetattr(fd, TCSANOW, &oldtio) == -1) {
     perror("tcsetattr");
