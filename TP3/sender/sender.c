@@ -22,16 +22,92 @@
 #define A 0x03
 #define C_SET 0x03
 #define C_UA 0x07
-
 #define C_N0 0x00
 #define C_N1 0x40
-#define RR0 0x85
-#define RR1 0x05
+#define C_RR0 0x85
+#define C_RR1 0x05
+#define C_DISC 0x0B
+#define C_REJ0 0x81
+#define C_REJ1 0x01
 
 #define MAX_TRIES 3
 int timeout_count = 0;
 
 #define ERROR -1
+
+int packetConstructor(unsigned char** packet) {
+  int input1;
+  int input2;
+  char c[5];
+  int n_data;
+
+  printf("~~~~~~~~~~~~~~~~~~~~~~~~~\n\n1: I (information packet) ; 2: S/U (control packet)\n");
+
+  scanf("%d", &input1);
+
+  switch(input1) {
+    //CONTROL PACKET
+    case 2:
+      c[0]=FLAG; c[1]=A; c[4]=FLAG;
+      printf("1:SET ; 2:DISC ; 3:UA ; 4: RR(R=0) ; 5:RR(R=1) ; 6:REJ(R=0) ; 7:REJ(R=1)\n");
+      scanf("%d", &input2);
+      switch(input2) {
+        case 1:
+          c[2]=C_SET;
+          break;
+        case 2:
+          c[2]=C_DISC;
+          break;
+        case 3:
+          c[2]=C_UA;
+          break;
+        case 4:
+          c[2]=C_RR0;
+          break;
+        case 5:
+          c[2]=C_RR1;
+          break;
+        case 6:
+          c[2]=C_REJ0;
+          break;
+        case 7:
+          c[2]=C_REJ1;
+          break;
+      }
+      c[3]=c[1]^c[2];
+      //free(*packet);
+      *packet = (char*)malloc(5*sizeof(char));
+      for(int i=0; i<sizeof(c); i++) {
+        (*packet)[i]=c[i];
+        //printf("%x\n", packet[i]);
+      }
+      return 5;
+      break;
+    // INFORMATION PACKET
+    case 1:
+      //printf("1:BCC2 error ; 2:No BCC2 error\n");
+      //scanf("%d", &input2);
+      printf("Type number of data bytes:");
+      scanf("%d", &n_data);
+      char i_packet[n_data+6];
+      i_packet[0]=FLAG; i_packet[1]=A; i_packet[2]=0x00; i_packet[3]=i_packet[1]^i_packet[2]; i_packet[n_data+5]=FLAG;
+      int bcc2=0;
+      for(int i=0; i<n_data; i++) {
+        i_packet[i+4]='A';
+        bcc2^=i_packet[i+4];
+      }
+      i_packet[4+n_data] = bcc2;
+      //free(*packet);
+      *packet = (char*)malloc((n_data+6)*sizeof(char));
+      for(int i=0; i<sizeof(i_packet); i++) {
+        (*packet)[i]=i_packet[i];
+        //printf("\nP:%x\n\n", *(packet+i));
+        //printf("IP:%x\n", i_packet[i]);
+      }
+      return 6+n_data;
+      break;
+  }
+}
 
 int receiveUA(int serialPortFD) {
   char c;
@@ -176,6 +252,7 @@ int main(int argc, char **argv) {
   int STOP = FALSE;
 
   while (STOP == FALSE && timeout_count<MAX_TRIES) {
+    /*
     unsigned char set[5];
     set[0] = FLAG;
     set[1] = A;
@@ -184,6 +261,9 @@ int main(int argc, char **argv) {
     set[4] = FLAG;
     // set sending
     tcflush(fd, TCIOFLUSH);
+    */
+    unsigned char* set;
+    packetConstructor(&set);
     int w = write(fd, set, 5);
 
     printf("SET sent ; W:%d\n", w);
@@ -201,6 +281,14 @@ int main(int argc, char **argv) {
   STOP = FALSE;
   timeout_count = 0;
 
+  while(1) {
+    unsigned char* i_packet;
+    int packet_size = packetConstructor(&i_packet);
+    tcflush(fd, TCIOFLUSH);
+    int w = write(fd, i_packet, packet_size);
+    printf("I packet sent ; W:%d\n", w);
+  }
+/*
   while (STOP == FALSE && timeout_count<MAX_TRIES) {
     unsigned char bcc2;
     unsigned char inf[6+20]; //6 das merdas de controlo e 20 a's para encher chouriço
@@ -223,7 +311,7 @@ int main(int argc, char **argv) {
     printf("I packet sent ; W:%d\n", w); 
 
     STOP = TRUE;
-  }
+  }*/
 /*
   for (int i = 0; i < 25; i++) {
     buf[i] = 'a';

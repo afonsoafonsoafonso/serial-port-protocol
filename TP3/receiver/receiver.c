@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
 
     buf[i-1] = 0;
 
-    printf("%s",buf);
+    printf("%s\n\n",buf);
   }
 
   printf("\n");
