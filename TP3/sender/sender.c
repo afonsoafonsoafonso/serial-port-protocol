@@ -40,6 +40,7 @@ int packetConstructor(unsigned char** packet) {
   int input2;
   char c[5];
   int n_data;
+  int ns;
 
   printf("~~~~~~~~~~~~~~~~~~~~~~~~~\n\n1: I (information packet) ; 2: S/U (control packet)\n");
 
@@ -77,20 +78,20 @@ int packetConstructor(unsigned char** packet) {
       c[3]=c[1]^c[2];
       //free(*packet);
       *packet = (char*)malloc(5*sizeof(char));
-      for(int i=0; i<sizeof(c); i++) {
+      for(int i=0; i<sizeof(c); i++)
         (*packet)[i]=c[i];
-        //printf("%x\n", packet[i]);
-      }
       return 5;
       break;
     // INFORMATION PACKET
     case 1:
-      //printf("1:BCC2 error ; 2:No BCC2 error\n");
-      //scanf("%d", &input2);
       printf("Type number of data bytes:");
       scanf("%d", &n_data);
+      printf("1: N(s)=0 ; 2: N(s)=1\n");
+      scanf("%d", &ns);
+      if(ns==1) ns=C_N0;
+      else ns=C_N1;
       char i_packet[n_data+6];
-      i_packet[0]=FLAG; i_packet[1]=A; i_packet[2]=0x00; i_packet[3]=i_packet[1]^i_packet[2]; i_packet[n_data+5]=FLAG;
+      i_packet[0]=FLAG; i_packet[1]=A; i_packet[2]=ns; i_packet[3]=i_packet[1]^i_packet[2]; i_packet[n_data+5]=FLAG;
       int bcc2=0;
       for(int i=0; i<n_data; i++) {
         i_packet[i+4]='A';
@@ -99,11 +100,8 @@ int packetConstructor(unsigned char** packet) {
       i_packet[4+n_data] = bcc2;
       //free(*packet);
       *packet = (char*)malloc((n_data+6)*sizeof(char));
-      for(int i=0; i<sizeof(i_packet); i++) {
+      for(int i=0; i<sizeof(i_packet); i++)
         (*packet)[i]=i_packet[i];
-        //printf("\nP:%x\n\n", *(packet+i));
-        //printf("IP:%x\n", i_packet[i]);
-      }
       return 6+n_data;
       break;
   }
@@ -287,6 +285,7 @@ int main(int argc, char **argv) {
     tcflush(fd, TCIOFLUSH);
     int w = write(fd, i_packet, packet_size);
     printf("I packet sent ; W:%d\n", w);
+
   }
 /*
   while (STOP == FALSE && timeout_count<MAX_TRIES) {
