@@ -64,6 +64,8 @@ int readHeader(int fd, struct header *header) {
       if (c == C_DISC || c == C_N0 || c == C_N1) {
         check ^= c;
         header->control = c;
+        printf("C: %x\n", c);
+        curr=C_RCV;
       } else {
         curr = START;
       }
@@ -114,7 +116,7 @@ void awaitControl(int serialPortFD, unsigned char control) {
       break;
     case A_RCV:
       if (c == control) {
-        puts("Received C_SET");
+        puts("Received C byte");
         curr = C_RCV;
         check ^= c;
       } else if (c == FLAG) {
@@ -135,7 +137,7 @@ void awaitControl(int serialPortFD, unsigned char control) {
       break;
     case BCC_OK:
       if (c == FLAG) {
-        puts("SET END");
+        puts("CONTROL END");
         STOP = TRUE;
       } else {
         curr = START;
@@ -213,15 +215,17 @@ int main(int argc, char **argv) {
   sendControl(fd, C_UA);
 
   while (1) {
+    //printf("WHIIIIILLEEEE UNOOOOO\n");
     struct header header;
 
     char waitingFor = C_N0;
-
+    //printf("Stuck at readHeader?\n");
     if (readHeader(fd, &header)) {
+      //printf("Read header TO-DO: send REJ\n");
       //TODO send REJ
       continue;
     }
-
+    //printf("Stuck at sendControl(waitingFor)?\n");
     if (header.control != waitingFor) {
       tcflush(fd, TCIOFLUSH);
       sendControl(fd, waitingFor);
@@ -235,10 +239,10 @@ int main(int argc, char **argv) {
     int i = 0;
 
     int nr;
-
+    printf("\n---------------------------");
     while (i < 512) {
       nr = read(fd, &c, 1);
-      printf("Received: %x", c);
+      printf("Received: %x\n", c);
 
       if (c == FLAG) {
         break;
@@ -246,22 +250,28 @@ int main(int argc, char **argv) {
       
       buf[i] = c;
       i++;
-
       check ^= c;
-
+      printf("BUF: %x ; CHECK: %x", buf[i], check);
     }
+    printf("---------------------------\n");
 
     //TODO disconnect protocol
-
+    printf("CHECK BYTE: %x\n", check);
+    printf("CHECK BYTE ON BUF: %x\n", buf[i-1]);
     if (buf[i-1] != check) {
+      printf("TODO: send REJ: error on message\n");
       //TODO send REJ: error on message
       continue;
     }
 
+    printf("Header.control: %x\n", header.control);
+
     if (header.control == C_N0) {
+      printf("RCV: SENDING C_RR1\n");
       sendControl(fd, C_RR1);
       waitingFor = C_N1;
     } else if (header.control == C_N1) {
+      printf("RCV: SENDING C_RR0\n");
       sendControl(fd, C_RR0);
       waitingFor = C_N0;
     } 

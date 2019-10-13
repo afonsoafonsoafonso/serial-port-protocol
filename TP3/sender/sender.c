@@ -182,6 +182,75 @@ int receiveUA(int serialPortFD) {
   return 0;
 }
 
+void awaitRCVReply(int serialPortFD, char* c_value) {
+  tcflush(serialPortFD, TCIOFLUSH);
+  char c;
+  int nr;
+
+  enum state { START, FLAG_RCV, A_RCV, C_RCV, BCC_OK };
+  enum state curr = START;
+
+  char check = 0;
+
+  int STOP = FALSE;
+  while (STOP == FALSE) {
+    printf("Stuck at read!\n");
+    nr = read(serialPortFD, &c, 1);
+    printf("Or maybe not...");
+    printf("nc = %d, %x\n", nr, (int)c);
+
+    switch (curr) {
+    case START:
+      if (c == FLAG) {
+        puts("Received Flag");
+        curr = FLAG_RCV;
+      }
+      break;
+    case FLAG_RCV:
+      if (c == A) {
+        puts("Received A");
+        curr = A_RCV;
+        check ^= c;
+      } else if (c == FLAG) {
+      } else {
+        curr = START;
+      }
+      break;
+    case A_RCV:
+      if (c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1) {
+        puts("Received C byte");
+        curr = C_RCV;
+        check ^= c;
+        *c_value = c;
+      } else if (c == FLAG) {
+        curr = FLAG_RCV;
+      } else {
+        curr = START;
+      }
+      break;
+    case C_RCV:
+      if (c == check) {
+        puts("BCC is ok");
+        curr = BCC_OK;
+      } else if (c == FLAG) {
+        curr = FLAG_RCV;
+      } else {
+        curr = START;
+      }
+      break;
+    case BCC_OK:
+      if (c == FLAG) {
+        puts("CONTROL END");
+        STOP = TRUE;
+      } else {
+        curr = START;
+      }
+      break;
+    }
+  }
+  puts("Exiting.");
+}
+
 void alarmHandler(int sig) {
   timeout_count++;
   puts("Time out signal.");
@@ -250,16 +319,6 @@ int main(int argc, char **argv) {
   int STOP = FALSE;
 
   while (STOP == FALSE && timeout_count<MAX_TRIES) {
-    /*
-    unsigned char set[5];
-    set[0] = FLAG;
-    set[1] = A;
-    set[2] = C_SET;
-    set[3] = set[1] ^ set[2];
-    set[4] = FLAG;
-    // set sending
-    tcflush(fd, TCIOFLUSH);
-    */
     unsigned char* set;
     packetConstructor(&set);
     int w = write(fd, set, 5);
@@ -279,6 +338,7 @@ int main(int argc, char **argv) {
   STOP = FALSE;
   timeout_count = 0;
 
+
   while(1) {
     unsigned char* i_packet;
     int packet_size = packetConstructor(&i_packet);
@@ -286,49 +346,12 @@ int main(int argc, char **argv) {
     int w = write(fd, i_packet, packet_size);
     printf("I packet sent ; W:%d\n", w);
 
+    char c_value;
+    awaitRCVReply(fd, &c_value);
+    printf("C Value: %x\n", c_value);
+
+    free(i_packet);
   }
-/*
-  while (STOP == FALSE && timeout_count<MAX_TRIES) {
-    unsigned char bcc2;
-    unsigned char inf[6+20]; //6 das merdas de controlo e 20 a's para encher chouriço
-    inf[0] = FLAG;
-    inf[1] = A;
-    inf[2] = 0x00; //para já. depois altera-se consoante o protocolo (0 ou 1)
-    inf[3] = inf[1] ^ inf[2];
-    for(int i=4; i<25; i++) { //enche D4-D24 com lixo para teste
-      inf[i]='a';
-      if(i==4) bcc2 = inf[i];
-      else bcc2 = bcc2^inf[i];
-    }
-    inf[25] = bcc2;
-    inf[26] = FLAG;
-
-    // I packet sending
-    tcflush(fd, TCIOFLUSH);
-    int w = write(fd, inf, 5);
-
-    printf("I packet sent ; W:%d\n", w); 
-
-    STOP = TRUE;
-  }*/
-/*
-  for (int i = 0; i < 25; i++) {
-    buf[i] = 'a';
-  }
-*/
-  /*testing*/
-  /*
-  buf[25] = '\0';
-
-  res = write(fd, buf, 26);
-  printf("%d bytes written\n", res);
-  */
-  /*
-    O ciclo FOR e as instru��es seguintes devem ser alterados de modo a
-    respeitar o indicado no gui�o
-  */
-
-  //printf("%s\n", buf);
 
   sigaction(SIGALRM, &oldSigAction, NULL);
 
