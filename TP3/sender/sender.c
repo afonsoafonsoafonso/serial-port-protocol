@@ -217,7 +217,7 @@ void awaitRCVReply(int serialPortFD, char* c_value) {
       }
       break;
     case A_RCV:
-      if (c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1) {
+      if (c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_DISC) {
         puts("Received C byte");
         curr = C_RCV;
         check ^= c;
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
     because we don't want to get killed if linenoise sends CTRL-C.
   */
 
-  fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY);
+  fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
   if (fd < 0) {
     perror(argv[1]);
     exit(-1);
