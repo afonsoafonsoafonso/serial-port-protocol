@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
     because we don't want to get killed if linenoise sends CTRL-C.
   */
 
-  fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY);
+  fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY);
   if (fd < 0) {
     perror("/dev/ttyS2");
     exit(-1);
@@ -221,12 +221,18 @@ int main(int argc, char **argv) {
     char waitingFor = C_N0;
     //printf("Stuck at readHeader?\n");
     if (readHeader(fd, &header)) {
-      //printf("Read header TO-DO: send REJ\n");
-      //TODO send REJ
+      sendControl(fd, C_REJ0);
       continue;
     }
     //printf("Stuck at sendControl(waitingFor)?\n");
     if (header.control != waitingFor) {
+      if (header.control == C_DISC) {
+        tcflush(fd, TCIOFLUSH);
+        puts("C_DISC received, disconnecting.");
+        sendControl(fd, C_DISC);
+        awaitControl(fd, C_UA);
+        break;
+      }
       tcflush(fd, TCIOFLUSH);
       sendControl(fd, waitingFor);
       continue;
@@ -239,7 +245,7 @@ int main(int argc, char **argv) {
     int i = 0;
 
     int nr;
-    printf("\n---------------------------");
+    printf("\n---------------------------\n");
     while (i < 512) {
       nr = read(fd, &c, 1);
       printf("Received: %x\n", c);
@@ -249,18 +255,23 @@ int main(int argc, char **argv) {
       }
       
       buf[i] = c;
+      printf("BUF: %x ; CHECK: %x\n", buf[i], check^c);
       i++;
-      check ^= c;
-      printf("BUF: %x ; CHECK: %x", buf[i], check);
+      check ^= prev;
+      prev = c;
     }
     printf("---------------------------\n");
 
-    //TODO disconnect protocol
+    printf("RECEIVED %d BYTES\n", i-1);
     printf("CHECK BYTE: %x\n", check);
     printf("CHECK BYTE ON BUF: %x\n", buf[i-1]);
+
     if (buf[i-1] != check) {
-      printf("TODO: send REJ: error on message\n");
-      //TODO send REJ: error on message
+      if (waitingFor == C_N0) {
+        sendControl(fd, C_REJ0);
+      } else if (waitingFor == C_N1) {
+        sendControl(fd, C_REJ1);
+      }
       continue;
     }
 
@@ -280,6 +291,8 @@ int main(int argc, char **argv) {
 
     printf("%s\n\n",buf);
   }
+
+  //TODO receiver FLAG escape
 
   printf("\n");
 
