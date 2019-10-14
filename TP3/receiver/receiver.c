@@ -204,12 +204,6 @@ int main(int argc, char **argv) {
 
   awaitControl(fd, C_SET);
 
-  // sleep(1);
-  /*
-          O ciclo WHILE deve ser alterado de modo a respeitar o indicado no
-     gui�o
-  */
-
   tcflush(fd, TCIOFLUSH);
 
   sendControl(fd, C_UA);
