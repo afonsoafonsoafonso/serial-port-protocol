@@ -24,7 +24,6 @@ void alarmHandler(int sig) {
 }
 
 int awaitControl(int serialPortFD, unsigned char control) {
-  tcflush(serialPortFD, TCIOFLUSH);
   char c;
   int nr;
 
@@ -88,6 +87,7 @@ int awaitControl(int serialPortFD, unsigned char control) {
 }
 
 int sendControl(int serialPortFD, unsigned char control) {
+  tcflush(serialPortFD, TCIOFLUSH);
   unsigned char answer[] = {FLAG, A, control, A ^ control, FLAG};
   for (int i = 0; i < 5;) {
     int res = write(serialPortFD, answer + i, 5 - i);
@@ -190,8 +190,6 @@ int restore_terminal(int fd) {
 
 int open_receiver(int fd) {
   awaitControl(fd, C_SET);
-
-  tcflush(fd, TCIOFLUSH);
 
   if (sendControl(fd, C_UA)) {
     return -1;
@@ -380,7 +378,6 @@ int llread(int fd, char *buffer) {
         char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
-          tcflush(fd, TCIOFLUSH);
           //puts("C_DISC received, disconnecting.");
           sendControl(fd, C_DISC);
           awaitControl(fd, C_UA);
@@ -389,7 +386,6 @@ int llread(int fd, char *buffer) {
           continue;
         }
       }
-      tcflush(fd, TCIOFLUSH);
       printf("got %x but was wainting for %x\n", header.control, waitingFor);
       sendControl(fd, waitingFor);
       continue;
@@ -465,14 +461,20 @@ int llread(int fd, char *buffer) {
   }
 }
 int llclose(int fd) {
-  sigaction(SIGALRM, &oldSigAction, NULL);
 
-  sendControl(fd, C_DISC);
-  awaitControl(fd, C_DISC);
-  sendControl(fd, C_UA);
+  while (1) {
+    sendControl(fd, C_DISC);
+    alarm(TIMEOUT_THRESHOLD);
+
+    if (awaitControl(fd, C_DISC) == 0) {
+      alarm(0);
+      sendControl(fd, C_UA);
+      break;
+    }
+  }
 
   close(fd);
-
+  sigaction(SIGALRM, &oldSigAction, NULL);
   return 0;
 }
 

@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    int fd = llopen(COM2, SENDER);
+    int fd = llopen(COM0, SENDER);
 
     char buf[1024];
     for (int i = 0; i < 300; i++) {
