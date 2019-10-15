@@ -6,28 +6,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
-
-#define FALSE 0
-#define TRUE 1
-
-#define BAUDRATE B38400
-
-#define ESCAPE 0x7d
-
-#define FLAG 0x7e
-#define A 0x03
-#define C_SET 0x03
-#define C_UA 0x07
-#define C_N0 0x00
-#define C_N1 0x40
-#define C_RR0 0x05
-#define C_RR1 0x85
-#define C_DISC 0x0B
-#define C_REJ0 0x01
-#define C_REJ1 0x81
-
-#define MAX_TRIES 3
-#define TIMEOUT_THRESHOLD 3
+#include <string.h>
 
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
@@ -60,18 +39,15 @@ int awaitControl(int serialPortFD, unsigned char control) {
     if (nr < 0) {
       return errno;
     }
-    printf("nc = %d, %x\n", nr, (int)c);
 
     switch (curr) {
     case START:
       if (c == FLAG) {
-        puts("Received Flag");
         curr = FLAG_RCV;
       }
       break;
     case FLAG_RCV:
       if (c == A) {
-        puts("Received A");
         curr = A_RCV;
         check ^= c;
       } else if (c == FLAG) {
@@ -81,7 +57,6 @@ int awaitControl(int serialPortFD, unsigned char control) {
       break;
     case A_RCV:
       if (c == control) {
-        puts("Received C byte");
         curr = C_RCV;
         check ^= c;
       } else if (c == FLAG) {
@@ -92,7 +67,6 @@ int awaitControl(int serialPortFD, unsigned char control) {
       break;
     case C_RCV:
       if (c == check) {
-        puts("BCC is ok");
         curr = BCC_OK;
       } else if (c == FLAG) {
         curr = FLAG_RCV;
@@ -102,7 +76,6 @@ int awaitControl(int serialPortFD, unsigned char control) {
       break;
     case BCC_OK:
       if (c == FLAG) {
-        puts("CONTROL END");
         STOP = TRUE;
       } else {
         curr = START;
@@ -110,8 +83,7 @@ int awaitControl(int serialPortFD, unsigned char control) {
       break;
     }
   }
-  puts("Exiting.");
-
+  printAction(0, control, 0);
   return 0;
 }
 
@@ -123,9 +95,8 @@ int sendControl(int serialPortFD, unsigned char control) {
       return -1;
     }
     i += res;
-    printf("%d bytes sent.\n", res);
   }
-
+  printAction(1, control, 0);
   return 0;
 }
 
@@ -143,7 +114,6 @@ int readHeader(int fd, struct header *header) {
     if (nr < 0) {
       return -2;
     }
-    printf("nc = %d, %x\n", nr, c);
 
     switch (curr) {
     case START:
@@ -165,15 +135,12 @@ int readHeader(int fd, struct header *header) {
       if (c == C_DISC || c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_REJ0 || c == C_REJ1) {
         check ^= c;
         header->control = c;
-        printf("C: %x\n", c);
         curr=C_RCV;
       } else {
         curr = START;
       }
       break;
     case C_RCV:
-      printf("CHECK: %x\n", check);
-      printf("BYTE: %x\n", c);
       if (check == c) {
         STOP = TRUE;
       } else {
@@ -249,7 +216,6 @@ int open_sender(int fd) {
     if (sendControl(fd, C_SET)) {
       return -1;
     }
-    puts("SET sent.");
 
     alarm(TIMEOUT_THRESHOLD);
 
@@ -257,7 +223,6 @@ int open_sender(int fd) {
       printf("Timed out\n");
       timeout_count++;
     } else {
-      printf("UA received\n");
       STOP = TRUE;
       timeout_count = 0;
     }
@@ -274,7 +239,7 @@ int open_sender(int fd) {
 }
 
 int llopen(int port, enum open_mode mode) {
-  if (port != COM0 && port != COM1) {
+  if (port != COM0 && port != COM1 && port!= COM2) {
     return -1;
   }
 
@@ -330,16 +295,15 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     message[4+j] = check;
     message[5+j] = FLAG;
 
-    puts("Sending message");
     int nr = write(fd, message, 6+j);
     if (nr < 0) {
       return -1;
     }
+    printAction(1, 'I', nr);
 
     alarm(TIMEOUT_THRESHOLD);
 
     struct header header;
-    puts("Reading header");
     int res = readHeader(fd, &header);
     alarm(0);
     if (res < 0) {
@@ -364,11 +328,13 @@ int llwrite(int fd, char *buffer, unsigned int length) {
 
     if (enumeration == C_N0) {
       if (header.control == C_RR1) {
-        puts("Received C_RR1");
+        //puts("Received C_RR1");
+        printAction(0, C_RR1, 0);
         enumeration = C_N1;
         current_pointer += i;
       } else if (header.control == C_REJ0) {
-        puts("N0 rejected");
+        //puts("N0 rejected");
+        printAction(0, C_REJ0, 0);
         continue;
       } else if (header.control == C_N1) {
         enumeration = C_N1;
@@ -376,11 +342,13 @@ int llwrite(int fd, char *buffer, unsigned int length) {
       }
     } else if (enumeration == C_N1) {
       if (header.control == C_RR0) {
-        puts("Received C_RR0");
+        //puts("Received C_RR0");
+        printAction(0, C_RR0, 0);
         enumeration = C_N0;
         current_pointer += i;
       } else if (header.control == C_REJ1) {
-        puts("N1 rejected");
+        //puts("N1 rejected");
+        printAction(0, C_REJ1, 0);
         continue;
       } else if (header.control == C_N0) {
         enumeration = C_N0;
@@ -413,7 +381,7 @@ int llread(int fd, char *buffer) {
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
           tcflush(fd, TCIOFLUSH);
-          puts("C_DISC received, disconnecting.");
+          //puts("C_DISC received, disconnecting.");
           sendControl(fd, C_DISC);
           awaitControl(fd, C_UA);
           return current_pointer;
@@ -460,11 +428,11 @@ int llread(int fd, char *buffer) {
       check ^= buf[j];
     }
 
-    printf("RECEIVED %d BYTES:\n", i-1);
+    printf("Received %d data bytes.:\n", i-1);
     buf[i-1] = 0;
-    printf("%s\n",buf);
-    printf("CHECK BYTE: %x\n", check);
-    printf("CHECK BYTE ON BUF: %x\n", buf[i-1]);
+    //printf("%s\n",buf);
+    //printf("CHECK BYTE: %x\n", check);
+    //printf("CHECK BYTE ON BUF: %x\n", buf[i-1]);
 
     if (buf[i-1] != check) {
       if (waitingFor == C_N0) {
@@ -478,11 +446,11 @@ int llread(int fd, char *buffer) {
     printf("Header.control: %x\n", header.control);
 
     if (header.control == C_N0) {
-      printf("RCV: SENDING C_RR1\n");
+      //printf("RCV: SENDING C_RR1\n");
       sendControl(fd, C_RR1);
       waitingFor = C_N1;
     } else if (header.control == C_N1) {
-      printf("RCV: SENDING C_RR0\n");
+      //printf("RCV: SENDING C_RR0\n");
       sendControl(fd, C_RR0);
       waitingFor = C_N0;
     } 
@@ -505,4 +473,46 @@ int llclose(int fd) {
   close(fd);
 
   return 0;
+}
+
+void printAction(int sent, unsigned char c_byte, int n_data) {
+  char type[10];
+  switch (c_byte) {
+    case C_SET:
+      strcpy(type,"C_SET");
+      break;
+    case C_UA:
+      strcpy(type,"C_UA");
+      break;
+    case C_N0:
+      strcpy(type,"C_N0");
+      break;
+    case C_N1:
+      strcpy(type,"C_N1");
+      break;
+    case C_RR0:
+      strcpy(type,"C_RR0");
+      break;
+    case C_RR1:
+      strcpy(type,"C_RR1");
+      break;
+    case C_DISC:
+      strcpy(type,"C_DISC");
+      break;
+    case C_REJ0:
+      strcpy(type,"C_REJ0");
+      break;
+    case C_REJ1:
+      strcpy(type,"C_REJ1");
+      break;
+    case 'I':
+      printf("Sent %d data bytes.\n", n_data);
+      return;
+  }
+  if(sent==1) 
+    printf("Sent %s byte.\n", type);
+  else
+    printf("Received %s byte.\n", type);
+
+  return;
 }
