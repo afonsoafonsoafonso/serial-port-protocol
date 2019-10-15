@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[]) {
     puts("Opening.\n");
-    int fd = llopen(COM2, RECEIVER);
+    int fd = llopen(COM0, RECEIVER);
 
     char buf[1024];
     puts("Starting reading.\n");
