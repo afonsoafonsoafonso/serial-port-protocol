@@ -152,7 +152,7 @@ int readHeader(int fd, struct header *header) {
       }
       break;
     case A_RCV:
-      if (c == C_DISC || c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_REJ0 || c == C_REJ1) {
+      if (c == C_DISC || c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_REJ0 || c == C_REJ1 || C_UA) {
         check ^= c;
         header->control = c;
         curr=C_RCV;
@@ -315,6 +315,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     message[4+j] = check;
     message[5+j] = FLAG;
 
+    tcflush(fd, TCIOFLUSH);
     int nr = write(fd, message, 6+j);
     if (nr < 0) {
       return -1;
@@ -418,7 +419,6 @@ int llread(int fd, char *buffer) {
             if (header.control == C_DISC) {
               continue;
             } else if (header.control == C_UA) {
-              printAction(0,C_UA,0);
               return current_pointer;
             }
           }
@@ -495,17 +495,19 @@ int llread(int fd, char *buffer) {
 
   }
 }
+
 int llclose(int fd) {
+  if (current_mode == SENDER) {
+    while (1) {
+      sendControl(fd, C_DISC);
+      alarm(TIMEOUT_THRESHOLD);
 
-  while (1) {
-    sendControl(fd, C_DISC);
-    alarm(TIMEOUT_THRESHOLD);
-
-    int res = awaitControl(fd, C_DISC);
-    alarm(0);
-    if (res == 0) {
-      sendControl(fd, C_UA);
-      break;
+      int res = awaitControl(fd, C_DISC);
+      alarm(0);
+      if (res == 0) {
+        sendControl(fd, C_UA);
+        break;
+      }
     }
   }
 

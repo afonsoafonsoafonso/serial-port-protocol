@@ -13,5 +13,7 @@ int main(int argc, char* argv[]) {
 
     printf("\nFull message:\n%s\n", buf);
 
+    llclose(fd);
+
     return 0;
 }
