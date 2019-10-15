@@ -398,18 +398,21 @@ int llread(int fd, char *buffer) {
         if (c == FLAG) {
           while (1) {
             sendControl(fd, C_DISC);
-            alarm(TIMEOUT_THRESHOLD + 10);
+            alarm(TIMEOUT_THRESHOLD + 1);
 
             int res = readHeader(fd, &header);
             alarm(0);
-            int c;
-            read(fd, &c, 1);
-            if (c != FLAG) {
-              continue;
-            }
+            
             if (res == -2) {
               return current_pointer;
             } else if (res == -1) {
+              continue;
+            }
+			int c;
+			puts("reading last");
+            read(fd, &c, 1);
+			puts("read last");
+            if (c != FLAG) {
               continue;
             }
             if (header.control == C_DISC) {
