@@ -464,12 +464,8 @@ int llread(int fd, char *buffer) {
       check ^= buf[j];
     }
 
-    //printf("Received %d data bytes.:\n", i-1);
     printAction(0, 'I', i-1);
     buf[i-1] = 0;
-    //printf("%s\n",buf);
-    //printf("CHECK BYTE: %x\n", check);
-    //printf("CHECK BYTE ON BUF: %x\n", buf[i-1]);
 
     if (buf[i-1] != check) {
       if (waitingFor == C_N0) {
@@ -480,14 +476,13 @@ int llread(int fd, char *buffer) {
       continue;
     }
 
-    //printf("Header.control: %x\n", header.control);
 
     if (header.control == C_N0) {
-      //printf("RCV: SENDING C_RR1\n");
+      printAction(0, C_N0, 0);
       sendControl(fd, C_RR1);
       waitingFor = C_N1;
     } else if (header.control == C_N1) {
-      //printf("RCV: SENDING C_RR0\n");
+      printAction(0, C_N1, 0);
       sendControl(fd, C_RR0);
       waitingFor = C_N0;
     } 
