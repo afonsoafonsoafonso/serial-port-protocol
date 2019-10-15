@@ -1,4 +1,5 @@
 #include "serial.h"
+#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@
 #define MAX_TRIES 3
 #define TIMEOUT_THRESHOLD 3
 #define BUFFER_SIZE 100
+#define TIMEOUT_ERROR -2
 
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
@@ -56,7 +58,10 @@ int awaitControl(int serialPortFD, unsigned char control) {
   while (STOP == FALSE) {
     nr = read(serialPortFD, &c, 1);
     if (nr < 0) {
-      return errno;
+      if (errno == EINTR) {
+        return TIMEOUT_ERROR;
+      }
+      return -1;
     }
 
     switch (curr) {
@@ -132,7 +137,10 @@ int readHeader(int fd, struct header *header) {
   while (!STOP) {
     nr = read(fd, &c, 1);
     if (nr < 0) {
-      return -2;
+      if (errno == EINTR) {
+        return TIMEOUT_ERROR;
+      }
+      return -1;
     }
 
     switch (curr) {
@@ -405,7 +413,7 @@ int llread(int fd, char *buffer) {
             int res = readHeader(fd, &header);
             alarm(0);
             
-            if (res == -2) {
+            if (res == TIMEOUT_ERROR) {
               return current_pointer;
             } else if (res == -1) {
               continue;
