@@ -396,6 +396,7 @@ int llread(int fd, char *buffer) {
         char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
+					printAction(0, C_DISC, 0);
           while (1) {
             sendControl(fd, C_DISC);
             alarm(TIMEOUT_THRESHOLD + 1);
@@ -408,13 +409,12 @@ int llread(int fd, char *buffer) {
             } else if (res == -1) {
               continue;
             }
-			int c;
-			puts("reading last");
+						int c;
             read(fd, &c, 1);
-			puts("read last");
             if (c != FLAG) {
               continue;
             }
+						printAction(0, header.control,0);
             if (header.control == C_DISC) {
               continue;
             } else if (header.control == C_UA) {
