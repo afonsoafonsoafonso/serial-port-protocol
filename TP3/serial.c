@@ -402,6 +402,11 @@ int llread(int fd, char *buffer) {
 
             int res = readHeader(fd, &header);
             alarm(0);
+            int c;
+            read(fd, &c, 1);
+            if (c != FLAG) {
+              continue;
+            }
             if (res == -2) {
               return current_pointer;
             } else if (res == -1) {
@@ -410,6 +415,7 @@ int llread(int fd, char *buffer) {
             if (header.control == C_DISC) {
               continue;
             } else if (header.control == C_UA) {
+              printAction(0,C_UA,0);
               return current_pointer;
             }
           }
