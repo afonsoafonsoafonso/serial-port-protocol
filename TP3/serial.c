@@ -8,6 +8,26 @@
 #include <signal.h>
 #include <string.h>
 
+#define BAUDRATE B38400
+
+#define ESCAPE 0x7d
+
+#define FLAG 0x7e
+#define A 0x03
+#define C_SET 0x03
+#define C_UA 0x07
+#define C_N0 0x00
+#define C_N1 0x40
+#define C_RR0 0x05
+#define C_RR1 0x85
+#define C_DISC 0x0B
+#define C_REJ0 0x01
+#define C_REJ1 0x81
+
+#define MAX_TRIES 3
+#define TIMEOUT_THRESHOLD 3
+#define BUFFER_SIZE 100
+
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
 static struct sigaction oldSigAction;
@@ -199,14 +219,6 @@ int open_receiver(int fd) {
 }
 
 int open_sender(int fd) {
-  //TODO setup alarm handler
-  sigHandler.sa_handler = alarmHandler;
-
-  if (sigaction(SIGALRM, &sigHandler, &oldSigAction) || siginterrupt(SIGALRM, 1)) {
-      printf("sigaction failed\n");
-      return -1;
-  }
-
   int timeout_count = 0;
   int STOP = FALSE;
 
@@ -217,19 +229,19 @@ int open_sender(int fd) {
 
     alarm(TIMEOUT_THRESHOLD);
 
-    if (awaitControl(fd, C_UA)) {
-      printf("Timed out\n");
+    int res = awaitControl(fd, C_UA);
+    alarm(0);
+    if (res != 0) {
+      puts("Timed out.");
       timeout_count++;
     } else {
       STOP = TRUE;
       timeout_count = 0;
-    }
-
-    alarm(0);
+    }    
   }
 
   if (timeout_count >= MAX_TRIES) {
-    printf("Exceeded maximum atempts to connect\n");
+    puts("Exceeded maximum atempts to connect.");
     return -1;
   }
 
@@ -238,6 +250,7 @@ int open_sender(int fd) {
 
 int llopen(int port, enum open_mode mode) {
   if (port != COM0 && port != COM1 && port!= COM2) {
+    puts("Invalid COM number.");
     return -1;
   }
 
@@ -250,8 +263,17 @@ int llopen(int port, enum open_mode mode) {
 
   int fd = open(path, O_RDWR | O_NOCTTY);
   if (fd < 0) {
+    perror(path);
     return -1;
   }
+
+  sigHandler.sa_handler = alarmHandler;
+
+  if (sigaction(SIGALRM, &sigHandler, &oldSigAction) || siginterrupt(SIGALRM, 1)) {
+      printf("sigaction failed\n");
+      return -1;
+  }
+
 
   setup_terminal(fd);
 
@@ -267,7 +289,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
   unsigned int current_pointer = 0;
   char enumeration = C_N0;
   while(1) {
-    char message[6+200];
+    char message[6+BUFFER_SIZE*2];
     message[0] = FLAG;
     message[1] = A;
     message[2] = enumeration;
@@ -276,7 +298,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     char check = 0;
     int i = 0;
     int j = 0;
-    for (; i < 100 && current_pointer + i < length; i++) {
+    for (; i < BUFFER_SIZE && current_pointer + i < length; i++) {
       unsigned char byte = buffer[current_pointer+i];
       if (byte == FLAG || byte == ESCAPE) {
         message[4+j] = ESCAPE;
@@ -297,7 +319,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     if (nr < 0) {
       return -1;
     }
-    printAction(0, 'I', nr);
+    printAction(TRUE, 'I', nr);
 
     alarm(TIMEOUT_THRESHOLD);
 
@@ -305,12 +327,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     int res = readHeader(fd, &header);
     alarm(0);
     if (res < 0) {
-      if (res == -2) {
-        puts("Timeout.");
-        continue;
-      }
-      puts("Error in header");
-      return -1;
+      continue;
     }
 
     unsigned char c;
@@ -326,12 +343,10 @@ int llwrite(int fd, char *buffer, unsigned int length) {
 
     if (enumeration == C_N0) {
       if (header.control == C_RR1) {
-        //puts("Received C_RR1");
         printAction(0, C_RR1, 0);
         enumeration = C_N1;
         current_pointer += i;
-      } else if (header.control == C_REJ0) {
-        //puts("N0 rejected");
+      } else if (header.control == C_REJ0 || header.control == C_REJ1) {
         printAction(0, C_REJ0, 0);
         continue;
       } else if (header.control == C_N1) {
@@ -340,12 +355,10 @@ int llwrite(int fd, char *buffer, unsigned int length) {
       }
     } else if (enumeration == C_N1) {
       if (header.control == C_RR0) {
-        //puts("Received C_RR0");
         printAction(0, C_RR0, 0);
         enumeration = C_N0;
         current_pointer += i;
-      } else if (header.control == C_REJ1) {
-        //puts("N1 rejected");
+      } else if (header.control == C_REJ1 || header.control == C_REJ0) {
         printAction(0, C_REJ1, 0);
         continue;
       } else if (header.control == C_N0) {
@@ -368,8 +381,13 @@ int llread(int fd, char *buffer) {
     struct header header;
 
     //puts("Reading header");
-    if (readHeader(fd, &header)) {
-      sendControl(fd, C_REJ0);
+    if (readHeader(fd, &header) != 0) {
+      if (waitingFor == C_N0) {
+        sendControl(fd, C_REJ0);
+      } else if (waitingFor == C_N1) {
+        sendControl(fd, C_REJ1);
+      }
+      
       continue;
     }
   
@@ -378,10 +396,23 @@ int llread(int fd, char *buffer) {
         char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
-          //puts("C_DISC received, disconnecting.");
-          sendControl(fd, C_DISC);
-          awaitControl(fd, C_UA);
-          return current_pointer;
+          while (1) {
+            sendControl(fd, C_DISC);
+            alarm(TIMEOUT_THRESHOLD + 10);
+
+            int res = readHeader(fd, &header);
+            alarm(0);
+            if (res == -2) {
+              return current_pointer;
+            } else if (res == -1) {
+              continue;
+            }
+            if (header.control == C_DISC) {
+              continue;
+            } else if (header.control == C_UA) {
+              return current_pointer;
+            }
+          }
         } else {
           continue;
         }
@@ -466,8 +497,9 @@ int llclose(int fd) {
     sendControl(fd, C_DISC);
     alarm(TIMEOUT_THRESHOLD);
 
-    if (awaitControl(fd, C_DISC) == 0) {
-      alarm(0);
+    int res = awaitControl(fd, C_DISC);
+    alarm(0);
+    if (res == 0) {
       sendControl(fd, C_UA);
       break;
     }
