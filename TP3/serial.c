@@ -299,7 +299,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     if (nr < 0) {
       return -1;
     }
-    printAction(1, 'I', nr);
+    printAction(0, 'I', nr);
 
     alarm(TIMEOUT_THRESHOLD);
 
@@ -369,7 +369,7 @@ int llread(int fd, char *buffer) {
   while (1) {
     struct header header;
 
-    puts("Reading header");
+    //puts("Reading header");
     if (readHeader(fd, &header)) {
       sendControl(fd, C_REJ0);
       continue;
@@ -428,7 +428,8 @@ int llread(int fd, char *buffer) {
       check ^= buf[j];
     }
 
-    printf("Received %d data bytes.:\n", i-1);
+    //printf("Received %d data bytes.:\n", i-1);
+    printAction(0, 'I', i-1);
     buf[i-1] = 0;
     //printf("%s\n",buf);
     //printf("CHECK BYTE: %x\n", check);
@@ -443,7 +444,7 @@ int llread(int fd, char *buffer) {
       continue;
     }
 
-    printf("Header.control: %x\n", header.control);
+    //printf("Header.control: %x\n", header.control);
 
     if (header.control == C_N0) {
       //printf("RCV: SENDING C_RR1\n");
@@ -506,7 +507,10 @@ void printAction(int sent, unsigned char c_byte, int n_data) {
       strcpy(type,"C_REJ1");
       break;
     case 'I':
-      printf("Sent %d data bytes.\n", n_data);
+      if(sent==1)
+        printf("Sent %d data bytes.\n", n_data);
+      else
+        printf("Received %d data bytes.\n", n_data);
       return;
   }
   if(sent==1) 
