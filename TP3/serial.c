@@ -27,7 +27,6 @@
 
 #define MAX_TRIES 3
 #define TIMEOUT_THRESHOLD 3
-#define BUFFER_SIZE 100
 #define TIMEOUT_ERROR -2
 
 static struct termios oldtio, newtio;
@@ -293,11 +292,11 @@ int llopen(int port, enum open_mode mode) {
   }
 }
 
+static unsigned char enumeration = C_N0;
 int llwrite(int fd, char *buffer, unsigned int length) {
   unsigned int current_pointer = 0;
-  unsigned char enumeration = C_N0;
   while(1) {
-    char message[7+BUFFER_SIZE*2];
+    char message[7+length*2];
     message[0] = FLAG;
     message[1] = A;
     message[2] = enumeration;
@@ -306,7 +305,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     unsigned char check = 0;
     int i = 0;
     int j = 0;
-    for (; i < BUFFER_SIZE && current_pointer + i < length; i++) {
+    for (; i < length && current_pointer + i < length; i++) {
       unsigned char byte = buffer[current_pointer+i];
       if (byte == FLAG || byte == ESCAPE) {
         message[4+j] = ESCAPE;
@@ -356,53 +355,36 @@ int llwrite(int fd, char *buffer, unsigned int length) {
       return -1;
     }
 
+    printAction(0, header.control, 0);
     if (enumeration == C_N0) {
       if (header.control == C_RR1) {
-        printAction(0, C_RR1, 0);
         enumeration = C_N1;
-        current_pointer += i;
+        return i;
       } else if (header.control == C_REJ0 || header.control == C_REJ1) {
-        printAction(0, C_REJ0, 0);
         continue;
-      } else if (header.control == C_N1) {
-        enumeration = C_N1;
-        current_pointer += i;
       }
     } else if (enumeration == C_N1) {
       if (header.control == C_RR0) {
-        printAction(0, C_RR0, 0);
         enumeration = C_N0;
-        current_pointer += i;
+        return i;
       } else if (header.control == C_REJ1 || header.control == C_REJ0) {
-        printAction(0, C_REJ1, 0);
         continue;
-      } else if (header.control == C_N0) {
-        enumeration = C_N0;
-        current_pointer += i;
-      }
+      } 
     }
-    
-    if (current_pointer >= length) {
-      return current_pointer;
-    }
-
   }
 }
 
+static unsigned char waitingFor = C_N0;
 int llread(int fd, char *buffer) {
-  unsigned int current_pointer = 0;
-  unsigned char waitingFor = C_N0;
   while (1) {
     struct header header;
 
-    //puts("Reading header");
     if (readHeader(fd, &header) != 0) {
       if (waitingFor == C_N0) {
         sendControl(fd, C_REJ0);
       } else if (waitingFor == C_N1) {
         sendControl(fd, C_REJ1);
       }
-      
       continue;
     }
   
@@ -420,9 +402,8 @@ int llread(int fd, char *buffer) {
             alarm(0);
             
             if (res == TIMEOUT_ERROR) {
-              return current_pointer;
+              return 0;
             } else if (res == -1) {
-              puts("1");
               continue;
             }
 						
@@ -431,14 +412,12 @@ int llread(int fd, char *buffer) {
             if (c != FLAG) {
               printf("FLAG: %x\n", c);
               puts("2");
-              continue;
             }
 						printAction(0, header.control,0);
             if (header.control == C_DISC) {
               puts("3");
-              continue;
             } else if (header.control == C_UA) {
-              return current_pointer;
+              return 0;
             }
           }
         } else {
@@ -446,12 +425,16 @@ int llread(int fd, char *buffer) {
         }
       }
       printf("got %x but was wainting for %x\n", header.control, waitingFor);
-      sendControl(fd, waitingFor);
+      if (waitingFor == C_N0) {
+        sendControl(fd, C_RR0);
+      } else {
+        sendControl(fd, C_RR1);
+      }
       continue;
     }
 
     unsigned char c;
-    unsigned char buf[BUFFER_SIZE+1];
+    unsigned char buf[MAX_BUFFER_SIZE + 1];
     int i = 0;
 
     int nr;
@@ -504,9 +487,10 @@ int llread(int fd, char *buffer) {
 
 
     for (int j = 0; j < i-1; j++) {
-      buffer[current_pointer+j] = buf[j];
+      buffer[j] = buf[j];
     }
-    current_pointer += i-1;
+
+    return i-1;
 
   }
 }

@@ -6,8 +6,17 @@ int main(int argc, char* argv[]) {
     int fd = llopen(COM0, RECEIVER);
 
     char buf[10000];
+    int nr;
+    int i =0;
     puts("Starting reading.\n");
-    int nr = llread(fd, buf);
+    while (1) {
+    nr = llread(fd, buf+i);
+    if (nr > 0) {
+            i += nr;
+        } else if (nr == 0) {
+            break;
+        }
+    }
 
     buf[nr] = 0;
 

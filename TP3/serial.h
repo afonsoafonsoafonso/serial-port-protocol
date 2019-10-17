@@ -5,6 +5,8 @@
 #define COM1 1
 #define COM2 2
 
+#define MAX_BUFFER_SIZE 1024
+
 enum open_mode {SENDER, RECEIVER};
 
 int llopen(int port, enum open_mode mode);
