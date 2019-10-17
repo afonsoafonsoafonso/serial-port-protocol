@@ -297,7 +297,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
   unsigned int current_pointer = 0;
   char enumeration = C_N0;
   while(1) {
-    char message[6+BUFFER_SIZE*2];
+    char message[7+BUFFER_SIZE*2];
     message[0] = FLAG;
     message[1] = A;
     message[2] = enumeration;
@@ -320,7 +320,13 @@ int llwrite(int fd, char *buffer, unsigned int length) {
       check ^= byte;
     }
 
-    message[4+j] = check;
+    if (check == FLAG || check == ESCAPE) {
+      message[4+j] = ESCAPE;
+      j++;
+      message[4+j] = check ^ 0x20;
+    } else {
+      message[4+j] = check;
+    }
     message[5+j] = FLAG;
 
     tcflush(fd, TCIOFLUSH);
@@ -473,7 +479,6 @@ int llread(int fd, char *buffer) {
     }
 
     printAction(0, 'I', i-1);
-    buf[i-1] = 0;
 
     if (buf[i-1] != check) {
       if (waitingFor == C_N0) {
