@@ -406,12 +406,12 @@ int llread(int fd, char *buffer) {
       continue;
     }
   
+    printAction(0, header.control, 0);
     if (header.control != waitingFor) {
       if (header.control == C_DISC) {
         unsigned char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
-					printAction(0, C_DISC, 0);
           while (1) {
             sendControl(fd, C_DISC);
             alarm(TIMEOUT_THRESHOLD + 5);
@@ -495,11 +495,9 @@ int llread(int fd, char *buffer) {
 
 
     if (header.control == C_N0) {
-      printAction(0, C_N0, 0);
       sendControl(fd, C_RR1);
       waitingFor = C_N1;
     } else if (header.control == C_N1) {
-      printAction(0, C_N1, 0);
       sendControl(fd, C_RR0);
       waitingFor = C_N0;
     } 
