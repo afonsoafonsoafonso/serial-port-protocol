@@ -46,13 +46,13 @@ void alarmHandler(int sig) {
 }
 
 int awaitControl(int serialPortFD, unsigned char control) {
-  char c;
+  unsigned char c;
   int nr;
 
   enum state { START, FLAG_RCV, A_RCV, C_RCV, BCC_OK };
   enum state curr = START;
 
-  char check = 0;
+  unsigned char check = 0;
 
   int STOP = FALSE;
   while (STOP == FALSE) {
@@ -136,6 +136,7 @@ int readHeader(int fd, struct header *header) {
   int STOP = FALSE;
   while (!STOP) {
     nr = read(fd, &c, 1);
+    printf("%x\n", c);
     if (nr < 0) {
       if (errno == EINTR) {
         return TIMEOUT_ERROR;
@@ -160,7 +161,7 @@ int readHeader(int fd, struct header *header) {
       }
       break;
     case A_RCV:
-      if (c == C_DISC || c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_REJ0 || c == C_REJ1 || C_UA) {
+      if (c == C_DISC || c == C_N0 || c == C_N1 || c == C_RR0 || c == C_RR1 || c == C_REJ0 || c == C_REJ1 || c == C_UA) {
         check ^= c;
         header->control = c;
         curr=C_RCV;
@@ -295,7 +296,7 @@ int llopen(int port, enum open_mode mode) {
 
 int llwrite(int fd, char *buffer, unsigned int length) {
   unsigned int current_pointer = 0;
-  char enumeration = C_N0;
+  unsigned char enumeration = C_N0;
   while(1) {
     char message[7+BUFFER_SIZE*2];
     message[0] = FLAG;
@@ -303,7 +304,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     message[2] = enumeration;
     message[3] = message[1] ^ message[2];
 
-    char check = 0;
+    unsigned char check = 0;
     int i = 0;
     int j = 0;
     for (; i < BUFFER_SIZE && current_pointer + i < length; i++) {
@@ -391,7 +392,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
 
 int llread(int fd, char *buffer) {
   unsigned int current_pointer = 0;
-  char waitingFor = C_N0;
+  unsigned char waitingFor = C_N0;
   while (1) {
     struct header header;
 
@@ -408,13 +409,13 @@ int llread(int fd, char *buffer) {
   
     if (header.control != waitingFor) {
       if (header.control == C_DISC) {
-        char c;
+        unsigned char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
 					printAction(0, C_DISC, 0);
           while (1) {
             sendControl(fd, C_DISC);
-            alarm(TIMEOUT_THRESHOLD + 1);
+            alarm(TIMEOUT_THRESHOLD + 5);
 
             int res = readHeader(fd, &header);
             alarm(0);
@@ -422,15 +423,20 @@ int llread(int fd, char *buffer) {
             if (res == TIMEOUT_ERROR) {
               return current_pointer;
             } else if (res == -1) {
+              puts("1");
               continue;
             }
-						int c;
+						
+            unsigned char c;
             read(fd, &c, 1);
             if (c != FLAG) {
+              printf("FLAG: %x\n", c);
+              puts("2");
               continue;
             }
 						printAction(0, header.control,0);
             if (header.control == C_DISC) {
+              puts("3");
               continue;
             } else if (header.control == C_UA) {
               return current_pointer;
@@ -445,8 +451,8 @@ int llread(int fd, char *buffer) {
       continue;
     }
 
-    char c;
-    char buf[512];
+    unsigned char c;
+    unsigned char buf[512];
     int i = 0;
 
     int nr;
@@ -473,7 +479,7 @@ int llread(int fd, char *buffer) {
       }
     }
 
-    char check = 0;
+    unsigned char check = 0;
     for (int j = 0; j < i-1; j++) {
       check ^= buf[j];
     }
