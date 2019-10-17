@@ -451,7 +451,7 @@ int llread(int fd, char *buffer) {
     }
 
     unsigned char c;
-    unsigned char buf[512];
+    unsigned char buf[BUFFER_SIZE+1];
     int i = 0;
 
     int nr;
