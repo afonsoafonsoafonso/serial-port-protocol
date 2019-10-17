@@ -136,7 +136,6 @@ int readHeader(int fd, struct header *header) {
   int STOP = FALSE;
   while (!STOP) {
     nr = read(fd, &c, 1);
-    printf("%x\n", c);
     if (nr < 0) {
       if (errno == EINTR) {
         return TIMEOUT_ERROR;
@@ -460,7 +459,6 @@ int llread(int fd, char *buffer) {
     int escape_mode = 0;
     while (i < 512) {
       nr = read(fd, &c, 1);
-      //printf("Received: %x\n", c);
 
       if (c == FLAG) {
         break;
