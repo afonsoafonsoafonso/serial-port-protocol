@@ -10,15 +10,15 @@ int main(int argc, char* argv[]) {
     int i =0;
     puts("Starting reading.\n");
     while (1) {
-    nr = llread(fd, buf+i);
-    if (nr > 0) {
+        nr = llread(fd, buf+i);
+        if (nr > 0) {
             i += nr;
         } else if (nr == 0) {
             break;
         }
     }
 
-    buf[nr] = 0;
+    buf[i] = 0;
 
     printf("\nFull message:\n%s\n", buf);
 

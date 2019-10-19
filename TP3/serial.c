@@ -28,6 +28,7 @@
 #define MAX_TRIES 3
 #define TIMEOUT_THRESHOLD 3
 #define TIMEOUT_ERROR -2
+#define BCC_ERROR -3
 
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
@@ -171,7 +172,7 @@ int readHeader(int fd, struct header *header) {
       if (check == c) {
         STOP = TRUE;
       } else {
-        return -1;
+        return BCC_ERROR;
       }
     }
   }
@@ -340,8 +341,11 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     struct header header;
     int res = readHeader(fd, &header);
     alarm(0);
-    if (res < 0) {
-      continue;
+    if (res != 0) {
+      if (res == EINTR) {
+        continue;
+      }
+      return -1;
     }
 
     unsigned char c;
@@ -375,11 +379,43 @@ int llwrite(int fd, char *buffer, unsigned int length) {
 }
 
 static unsigned char waitingFor = C_N0;
+int receiverDisconnectProtocol(int fd) {
+  struct header header;
+  while (1) {
+    sendControl(fd, C_DISC);
+    alarm(TIMEOUT_THRESHOLD + 5);
+
+    int res = readHeader(fd, &header);
+    alarm(0);
+    
+    if (res == TIMEOUT_ERROR) {
+      return 0;
+    } else if (res == -1) {
+      continue;
+    }
+    
+    unsigned char c;
+    read(fd, &c, 1);
+    if (c != FLAG) {
+      printf("FLAG: %x\n", c);
+      continue;
+    }
+    printAction(0, header.control,0);
+    if (header.control == C_DISC) {
+      continue;
+    } else if (header.control == C_UA) {
+      return 0;
+    }
+  }
+}
 int llread(int fd, char *buffer) {
   while (1) {
     struct header header;
-
-    if (readHeader(fd, &header) != 0) {
+    int res = readHeader(fd, &header);
+    if (res != 0) {
+      if (res != BCC_ERROR) {
+        return -1;
+      }
       if (waitingFor == C_N0) {
         sendControl(fd, C_REJ0);
       } else if (waitingFor == C_N1) {
@@ -394,32 +430,7 @@ int llread(int fd, char *buffer) {
         unsigned char c;
         int nr = read(fd, &c, 1);
         if (c == FLAG) {
-          while (1) {
-            sendControl(fd, C_DISC);
-            alarm(TIMEOUT_THRESHOLD + 5);
-
-            int res = readHeader(fd, &header);
-            alarm(0);
-            
-            if (res == TIMEOUT_ERROR) {
-              return 0;
-            } else if (res == -1) {
-              continue;
-            }
-						
-            unsigned char c;
-            read(fd, &c, 1);
-            if (c != FLAG) {
-              printf("FLAG: %x\n", c);
-              puts("2");
-            }
-						printAction(0, header.control,0);
-            if (header.control == C_DISC) {
-              puts("3");
-            } else if (header.control == C_UA) {
-              return 0;
-            }
-          }
+          return receiverDisconnectProtocol(fd);
         } else {
           continue;
         }
