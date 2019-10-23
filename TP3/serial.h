@@ -7,6 +7,8 @@
 
 #define MAX_BUFFER_SIZE 1024
 
+#define TOO_BIG_ERROR -4
+
 enum open_mode {SENDER, RECEIVER};
 
 int llopen(int port, enum open_mode mode);

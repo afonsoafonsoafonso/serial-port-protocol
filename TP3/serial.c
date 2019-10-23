@@ -27,6 +27,7 @@
 
 #define MAX_TRIES 3
 #define TIMEOUT_THRESHOLD 3
+
 #define TIMEOUT_ERROR -2
 #define BCC_ERROR -3
 
@@ -295,6 +296,9 @@ int llopen(int port, enum open_mode mode) {
 
 static unsigned char enumeration = C_N0;
 int llwrite(int fd, char *buffer, unsigned int length) {
+  if (length > MAX_BUFFER_SIZE) {
+    return TOO_BIG_ERROR;
+  }
   unsigned int current_pointer = 0;
   while(1) {
     char message[7+length*2];
