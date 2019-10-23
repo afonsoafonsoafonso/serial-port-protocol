@@ -1,8 +1,11 @@
-#include "../serial.h"
+//#include "../serial.h"
+#include "../application_layer.h"
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    puts("Opening.\n");
+
+    receive_file();
+    /*puts("Opening.\n");
     int fd = llopen(COM0, RECEIVER);
 
     unsigned char buf[10000];
@@ -31,7 +34,7 @@ int main(int argc, char* argv[]) {
     }
     printf("\n");
 
-    llclose(fd);
+    llclose(fd);*/
 
     return 0;
 }
