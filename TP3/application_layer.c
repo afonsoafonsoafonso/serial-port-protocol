@@ -1,6 +1,7 @@
 #include <libgen.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include "serial.h"
@@ -13,15 +14,21 @@
 #define T_NAME 10
 #define T_SIZE 11
 
-struct tlv {
-    unsigned char Type;
-    unsigned char Lenght;
+struct tlv_filename {
+    unsigned char type;
+    unsigned int length;
+    unsigned char* value;
+};
+
+struct tlv_filesize {
+    unsigned char type;
+    unsigned int length;
+    unsigned int value;
 };
 
 int receive_file() {
     char packet[BUFFER_SIZE];
-    int fileSize;
-    unsigned char fileSizeBytes[4];
+    int LValue;
     int spfd = llopen(COM2, RECEIVER);
 
     llread(spfd, packet);
@@ -33,24 +40,24 @@ int receive_file() {
         printf("\nT_NAME RECEIVED");
     }
 
-    /*
-    fileSizeBytes[0]=packet[2];
-    fileSizeBytes[1]=packet[3];
-    fileSizeBytes[2]=packet[4];
-    fileSizeBytes[3]=packet[5];
+    struct tlv_filename file_name;
 
-    fileSize=(int)fileSizeBytes;
-    */
-    //fileSize = (int)packet[2] | ((int)packet[3]<< 8) | ((int)packet[4]<<16) | ((int)packet[5]<< 24);
-    ((unsigned char*)&fileSize)[0] = packet[2];
-    ((unsigned char*)&fileSize)[1] = packet[3];
-    ((unsigned char*)&fileSize)[2] = packet[4];
-    ((unsigned char*)&fileSize)[3] = packet[5];
-    printf("\n%d\n", fileSize);
+    ((unsigned char*)&LValue)[0] = packet[2];
+    ((unsigned char*)&LValue)[1] = packet[3];
+    ((unsigned char*)&LValue)[2] = packet[4];
+    ((unsigned char*)&LValue)[3] = packet[5];
 
-    for(int i=2; i<8; i++) {
-        printf("BYTE: %x\n", packet[i]);
+    file_name.length = LValue;
+
+    file_name.value = (char*)malloc(sizeof(char)*LValue);
+
+    for(int i=0; i<LValue; i++) {
+        file_name.value[i] = packet[i+6];
     }
+
+    printf("\nFILE NAME: %s\n", file_name.value);
+
+
 
 }
 
@@ -64,7 +71,7 @@ int send_file(char* filePath){
 
     FILE* fp =fopen(filePath, "r");
     fseek(fp, 0L, SEEK_END);
-    unsigned int fileSize = ftell(fp);
+    unsigned int LValue = ftell(fp);
     fclose(fp);
 
     int spfd = llopen(2, SENDER);
@@ -84,7 +91,7 @@ int send_file(char* filePath){
     sprintf(&control_start[6], "%s", fileName);
     control_start[nameSize + 7] = T_SIZE;
     *(&control_start[nameSize + 8]) = 4;
-    *(&control_start[nameSize + 12]) = fileSize;
+    *(&control_start[nameSize + 12]) = LValue;
     
     // Send Start Control Packet
     puts("Sending control");
