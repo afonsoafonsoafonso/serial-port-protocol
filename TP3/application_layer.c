@@ -23,9 +23,10 @@ int send_file(char* filePath){
 
     int fd = open(filePath, O_RDWR);
     if (fd < 0) {
-        puts("merda");
+        return -1;
     }
-    FILE* fp =fdopen(fd, "r");
+
+    FILE* fp =fopen(filePath, "r");
     fseek(fp, 0L, SEEK_END);
     unsigned int fileSize = ftell(fp);
     fclose(fp);
@@ -74,7 +75,7 @@ int send_file(char* filePath){
     puts("Finishing");
     llwrite(spfd, control_start, 1);
 
-    llclose(fd);
+    llclose(spfd);
 
     return 0;
 }

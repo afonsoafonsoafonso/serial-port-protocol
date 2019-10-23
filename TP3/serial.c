@@ -350,7 +350,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     int res = readHeader(fd, &header);
     alarm(0);
     if (res != 0) {
-      if (res == EINTR) {
+      if (res == TIMEOUT_ERROR) {
         continue;
       }
       return -1;
@@ -458,7 +458,6 @@ int llread(int fd, char *buffer) {
     unsigned int byteCount =0;
 
     int nr;
-    printf("\n---------------------------\n");
     int escape_mode = 0;
     while (i < 512) {
       nr = read(fd, &c, 1);
@@ -510,6 +509,8 @@ int llread(int fd, char *buffer) {
     for (int j = 0; j < i-1; j++) {
       buffer[j] = buf[j];
     }
+
+    printf("\n---------------------------\n");
 
     return i-1;
 
