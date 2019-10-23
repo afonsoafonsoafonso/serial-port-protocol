@@ -6,7 +6,7 @@
 #include <string.h>
 #include "serial.h"
 
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 200
 
 #define C_DATA 0x01
 #define C_START 0x02
@@ -27,9 +27,11 @@ struct tlv_filesize {
 };
 
 int receive_file() {
-    char packet[BUFFER_SIZE];
+    unsigned char packet[MAX_BUFFER_SIZE];
     int filename_size; //LValue
     int spfd = llopen(COM2, RECEIVER);
+
+    int new_file;
 
     llread(spfd, packet);
 
@@ -68,6 +70,36 @@ int receive_file() {
 
     printf("\n FILE SIZE VALUE: %d\n", file_size.value);
 
+    int packet_counter = 0;
+    unsigned int data_size;
+
+    // FICHEIRO E MERDAS DO ESTRONDO
+    new_file = open(file_name.value, O_CREAT | O_WRONLY);
+
+    while(TRUE) {
+        printf("\n");
+        llread(spfd, packet);
+
+        if(packet[0]==C_END) break;
+
+        printf("C: %x\n", packet[0]);   
+        printf("N; %d\n", packet[1]);
+
+        data_size = (unsigned int)packet[2]*256 + (unsigned int)packet[3];
+        printf("L2L1: %d\n", data_size);
+        printf("\n");
+
+        for(int i =0; i<data_size; i++) {
+            printf("%x ", packet[4+i]);
+        }
+        write(new_file, &packet[4], data_size);
+    }
+
+    llread(spfd, packet);
+
+    close(new_file);
+
+    return 0;
 }
 
 int send_file(char* filePath){
@@ -108,21 +140,19 @@ int send_file(char* filePath){
     puts("sent");
     int packetCounter = 0;
     while(TRUE){
-        char packet[BUFFER_SIZE];
+        unsigned char packet[4+BUFFER_SIZE];
         puts("reading");
-        int nr = read(fd, packet, BUFFER_SIZE);
+        int nr = read(fd, packet+4, BUFFER_SIZE);
         puts("read");
         if( nr <= 0) break; 
         unsigned char header[4];
-        header[0] = C_DATA;
-        header[1] = packetCounter;
-        header[2] = nr / 256;
-        header[3] = nr % 256;
+        packet[0] = C_DATA;
+        packet[1] = packetCounter;
+        packet[2] = nr / 256;
+        packet[3] = nr % 256;
 
-        puts("Sending header");
-        llwrite(spfd, header, 4);
         puts("Sending data");
-        llwrite(spfd, packet, nr);
+        llwrite(spfd, packet, nr+4);
         packetCounter++;
         
     }

@@ -301,8 +301,8 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     return TOO_BIG_ERROR;
   }
   unsigned int current_pointer = 0;
-  unsigned int byteCount = 0;
   while(1) {
+    unsigned int byteCount = 0;
     char message[7+length*2];
     message[0] = FLAG;
     message[1] = A;
