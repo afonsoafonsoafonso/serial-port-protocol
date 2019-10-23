@@ -1,4 +1,5 @@
 #include "serial.h"
+#include "application_layer.h"
 #include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -300,6 +301,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     return TOO_BIG_ERROR;
   }
   unsigned int current_pointer = 0;
+  unsigned int byteCount = 0;
   while(1) {
     char message[7+length*2];
     message[0] = FLAG;
@@ -312,7 +314,9 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     int j = 0;
     for (; i < length && current_pointer + i < length; i++) {
       unsigned char byte = buffer[current_pointer+i];
+      byteCount++;
       if (byte == FLAG || byte == ESCAPE) {
+        byteCount++;
         message[4+j] = ESCAPE;
         j++;
         message[4+j] = byte ^ 0x20;
@@ -338,7 +342,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     if (nr < 0) {
       return -1;
     }
-    printAction(TRUE, 'I', nr);
+    printAction(TRUE, 'I', byteCount);
 
     alarm(TIMEOUT_THRESHOLD);
 
@@ -451,6 +455,7 @@ int llread(int fd, char *buffer) {
     unsigned char c;
     unsigned char buf[MAX_BUFFER_SIZE + 1];
     int i = 0;
+    unsigned int byteCount =0;
 
     int nr;
     printf("\n---------------------------\n");
@@ -461,6 +466,7 @@ int llread(int fd, char *buffer) {
       if (c == FLAG) {
         break;
       }
+      byteCount++;
       
       if (c == ESCAPE) {
         escape_mode=1;
@@ -480,7 +486,7 @@ int llread(int fd, char *buffer) {
       check ^= buf[j];
     }
 
-    printAction(0, 'I', i-1);
+    printAction(0, 'I', byteCount-1);
 
     if (buf[i-1] != check) {
       if (waitingFor == C_N0) {
