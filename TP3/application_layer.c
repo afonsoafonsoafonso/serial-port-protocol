@@ -15,20 +15,20 @@
 #define T_SIZE 11
 
 struct tlv_filename {
-    unsigned char type;
+    //unsigned char type;
     unsigned int length;
     unsigned char* value;
 };
 
 struct tlv_filesize {
-    unsigned char type;
+    //unsigned char type;
     unsigned int length;
     unsigned int value;
 };
 
 int receive_file() {
     char packet[BUFFER_SIZE];
-    int LValue;
+    int filename_size; //LValue
     int spfd = llopen(COM2, RECEIVER);
 
     llread(spfd, packet);
@@ -42,22 +42,31 @@ int receive_file() {
 
     struct tlv_filename file_name;
 
-    ((unsigned char*)&LValue)[0] = packet[2];
-    ((unsigned char*)&LValue)[1] = packet[3];
-    ((unsigned char*)&LValue)[2] = packet[4];
-    ((unsigned char*)&LValue)[3] = packet[5];
+    ((unsigned char*)&filename_size)[0] = packet[2];
+    ((unsigned char*)&filename_size)[1] = packet[3];
+    ((unsigned char*)&filename_size)[2] = packet[4];
+    ((unsigned char*)&filename_size)[3] = packet[5];
 
-    file_name.length = LValue;
+    file_name.length = filename_size;
 
-    file_name.value = (char*)malloc(sizeof(char)*LValue);
+    file_name.value = (char*)malloc(sizeof(char)*filename_size);
 
-    for(int i=0; i<LValue; i++) {
+    for(int i=0; i<filename_size; i++) {
         file_name.value[i] = packet[i+6];
     }
 
     printf("\nFILE NAME: %s\n", file_name.value);
 
+    struct tlv_filesize file_size;
 
+    file_size.length = packet[filename_size+7];
+
+    ((unsigned char*)&file_size.value)[0] = packet[filename_size+12];
+    ((unsigned char*)&file_size.value)[1] = packet[filename_size+13];
+    ((unsigned char*)&file_size.value)[2] = packet[filename_size+14];
+    ((unsigned char*)&file_size.value)[3] = packet[filename_size+15];
+
+    printf("\n FILE SIZE VALUE: %d\n", file_size.value);
 
 }
 
