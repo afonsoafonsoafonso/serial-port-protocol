@@ -4,7 +4,7 @@
 #include <string.h>
 
 int main(int argc, char* argv[]) {
-
+  
     send_file("rodriguez.jpg");
 
     // int fd = llopen(COM0, SENDER);

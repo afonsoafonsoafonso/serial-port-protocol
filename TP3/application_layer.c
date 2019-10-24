@@ -82,7 +82,7 @@ int receive_file() {
 
         if(packet[0]==C_END) break;
 
-        printf("C: %x\n", packet[0]);   
+        printf("C: %x\n", packet[0]);
         printf("N; %d\n", packet[1]);
 
         data_size = (unsigned int)packet[2]*256 + (unsigned int)packet[3];
@@ -118,22 +118,38 @@ int send_file(char* filePath){
     int spfd = llopen(2, SENDER);
 
     unsigned int nameSize = strlen(fileName);
-    unsigned int controlSize = 3 + nameSize + 3* sizeof(unsigned int);
+    unsigned int ui_size = sizeof(unsigned int);
+
+    unsigned int controlSize = 3 + nameSize + 3 * ui_size;
     unsigned char control_start[controlSize];
+    unsigned int writePointer = 0;
+
+    printf("name size: %d\n", nameSize);
+    printf("name: %s\n", fileName);
+    printf("file size size: %d\n", ui_size);
+    printf("file size: %d\n\n", LValue);
 
     control_start[0] = C_START;
     control_start[1] = T_NAME;
-    //*(&control_start[2]) = nameSize;
-    control_start[2] = ((unsigned char*)&nameSize)[0];
-    control_start[3] = ((unsigned char*)&nameSize)[1];
-    control_start[4] = ((unsigned char*)&nameSize)[2];
-    control_start[5] = ((unsigned char*)&nameSize)[3];
-    printf("ADWADAWDAWD: %d\n", nameSize);
-    sprintf(&control_start[6], "%s", fileName);
+    writePointer += 2;
+
+    memcpy(control_start+writePointer, (unsigned char*)&nameSize, ui_size);
+    writePointer+=ui_size;
+
+    sprintf(control_start+writePointer, "%s", fileName);
+    writePointer += nameSize;
+
     control_start[nameSize + 7] = T_SIZE;
-    *(&control_start[nameSize + 8]) = 4;
-    *(&control_start[nameSize + 12]) = LValue;
-    
+    writePointer++;
+
+    memcpy(control_start+writePointer, (unsigned char*)&ui_size, ui_size);
+    writePointer+=ui_size;
+
+    memcpy(control_start+writePointer, (unsigned char*)&LValue, ui_size);
+    writePointer+=ui_size;
+
+    printf("\n");
+
     // Send Start Control Packet
     puts("Sending control");
     llwrite(spfd, control_start, controlSize);
@@ -144,7 +160,7 @@ int send_file(char* filePath){
         puts("reading");
         int nr = read(fd, packet+4, BUFFER_SIZE);
         puts("read");
-        if( nr <= 0) break; 
+        if( nr <= 0) break;
         unsigned char header[4];
         packet[0] = C_DATA;
         packet[1] = packetCounter;
@@ -154,7 +170,7 @@ int send_file(char* filePath){
         puts("Sending data");
         llwrite(spfd, packet, nr+4);
         packetCounter++;
-        
+
     }
 
     // Send End Control Packet
