@@ -2,25 +2,18 @@
 #include "../application_layer.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 int main(int argc, char* argv[]) {
-  
-    send_file("evereste.jpg");
 
-    // int fd = llopen(COM0, SENDER);
+    if (argc < 3) {
+      puts("Args: {port_number} {file_path}");
+      return -1;
+    }
 
-    // char *buf = "a~}}}~}~}}}}}~~~";
-    // unsigned int size = strlen(buf);
+    int port = atoi(argv[1]);
 
-    // int i = 0;
-    // for (; i < 5; i++) {
-    //     int nr = llwrite(fd, buf, size);
-    // }
-
-    // llwrite(fd, buf, 1);
-
-    // puts("\nDisconecting...\n");
-    // llclose(fd);
+    send_file(port, argv[2]);
 
     return 0;
 }

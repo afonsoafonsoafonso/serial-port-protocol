@@ -1,3 +1,3 @@
-int receive_file();
+int receive_file(int port);
 
-int send_file(char* filePath);
+int send_file(int port, char* filePath);

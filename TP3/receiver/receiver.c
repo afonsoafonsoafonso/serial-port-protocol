@@ -1,40 +1,18 @@
 //#include "../serial.h"
 #include "../application_layer.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char* argv[]) {
 
-    receive_file();
-    /*puts("Opening.\n");
-    int fd = llopen(COM0, RECEIVER);
-
-    unsigned char buf[10000];
-    int nr;
-    int i =0;
-    int j =0;
-    puts("Starting reading.\n");
-    while (1) {
-        nr = llread(fd, buf+i);
-        if (nr > 0) {
-            i += nr;
-        } else if (nr == 0) {
-            break;
-        }
-        for (; j < i; j++) {
-            printf("%x ", buf[j]);
-        }
-        printf("\n");
+    if (argc < 2) {
+      puts("Args: {port_number}");
+      return -1;
     }
 
-    buf[i] = 0;
+    int port = atoi(argv[1]);
 
-    printf("\nFull message:\n");
-    for (int j = 0; j < i; j++) {
-        printf("%x", buf[j]);
-    }
-    printf("\n");
-
-    llclose(fd);*/
+    receive_file(port);
 
     return 0;
 }

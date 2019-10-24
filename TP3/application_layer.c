@@ -26,11 +26,11 @@ struct tlv_filesize {
     unsigned int value;
 };
 
-int receive_file() {
+int receive_file(int port) {
     unsigned char packet[MAX_BUFFER_SIZE];
     unsigned int filename_size; //LValue
     unsigned int read_pointer=0;
-    int spfd = llopen(COM2, RECEIVER);
+    int spfd = llopen(port, RECEIVER);
     int ud_size = sizeof(unsigned int);
 
     int new_file;
@@ -82,7 +82,7 @@ int receive_file() {
     printf("FILE SIZE L: %u\n", file_size.length);
     printf("FILE SIZE VALUE: %u\n", file_size.value);
 
-    
+
     printf("\n");
 
     int packet_counter = 0;
@@ -117,7 +117,7 @@ int receive_file() {
     return 0;
 }
 
-int send_file(char* filePath){
+int send_file(int port, char* filePath){
     char* fileName = basename(filePath);
 
     int fd = open(filePath, O_RDWR);
@@ -130,7 +130,7 @@ int send_file(char* filePath){
     unsigned int LValue = ftell(fp);
     fclose(fp);
 
-    int spfd = llopen(2, SENDER);
+    int spfd = llopen(port, SENDER);
 
     unsigned int nameSize = strlen(fileName);
     unsigned int ui_size = sizeof(unsigned int);
@@ -172,9 +172,7 @@ int send_file(char* filePath){
     int packetCounter = 0;
     while(TRUE){
         unsigned char packet[4+BUFFER_SIZE];
-        puts("reading");
         int nr = read(fd, packet+4, BUFFER_SIZE);
-        puts("read");
         if( nr <= 0) break;
         unsigned char header[4];
         packet[0] = C_DATA;
@@ -182,7 +180,7 @@ int send_file(char* filePath){
         packet[2] = nr / 256;
         packet[3] = nr % 256;
 
-        puts("Sending data");
+        puts("Sending data\n");
         llwrite(spfd, packet, nr+4);
         packetCounter++;
 
