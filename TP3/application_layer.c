@@ -78,7 +78,7 @@ int receive_file() {
 
     while(TRUE) {
         printf("\n");
-        llread(spfd, packet);
+        while(llread(spfd, packet)<0);
 
         if(packet[0]==C_END) break;
 
