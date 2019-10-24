@@ -28,8 +28,10 @@ struct tlv_filesize {
 
 int receive_file() {
     unsigned char packet[MAX_BUFFER_SIZE];
-    int filename_size; //LValue
+    unsigned int filename_size; //LValue
+    unsigned int read_pointer=0;
     int spfd = llopen(COM2, RECEIVER);
+    int ud_size = sizeof(unsigned int);
 
     int new_file;
 
@@ -42,33 +44,46 @@ int receive_file() {
         printf("\nT_NAME RECEIVED");
     }
 
+    read_pointer+=2;
+
     struct tlv_filename file_name;
 
-    ((unsigned char*)&filename_size)[0] = packet[2];
-    ((unsigned char*)&filename_size)[1] = packet[3];
-    ((unsigned char*)&filename_size)[2] = packet[4];
-    ((unsigned char*)&filename_size)[3] = packet[5];
+    memcpy(&filename_size, packet+read_pointer, ud_size);
+    read_pointer+=ud_size;
 
     file_name.length = filename_size;
+
+    printf("\nFILE NAME LENGTH: %u\n", file_name.length);
 
     file_name.value = (char*)malloc(sizeof(char)*filename_size);
 
     for(int i=0; i<filename_size; i++) {
-        file_name.value[i] = packet[i+6];
+        file_name.value[i] = packet[i+read_pointer];
+        printf("CONA:%c \n", packet[i+read_pointer]);
     }
+
+    read_pointer+=filename_size;
 
     printf("\nFILE NAME: %s\n", file_name.value);
 
     struct tlv_filesize file_size;
 
-    file_size.length = packet[filename_size+7];
+    if(packet[read_pointer]==T_SIZE) {
+        printf("RECEIVED T_SIZE\n");
+    }
+    read_pointer++;
+    int size_start = read_pointer;
+    memcpy(&file_size.length, packet+read_pointer, ud_size);
+    read_pointer+=ud_size;
 
-    ((unsigned char*)&file_size.value)[0] = packet[filename_size+12];
-    ((unsigned char*)&file_size.value)[1] = packet[filename_size+13];
-    ((unsigned char*)&file_size.value)[2] = packet[filename_size+14];
-    ((unsigned char*)&file_size.value)[3] = packet[filename_size+15];
+    memcpy(&file_size.value, packet+read_pointer, file_size.length);
+    read_pointer += file_size.length;
 
-    printf("\n FILE SIZE VALUE: %d\n", file_size.value);
+    printf("FILE SIZE L: %u\n", file_size.length);
+    printf("FILE SIZE VALUE: %u\n", file_size.value);
+
+    
+    printf("\n");
 
     int packet_counter = 0;
     unsigned int data_size;
@@ -89,9 +104,9 @@ int receive_file() {
         printf("L2L1: %d\n", data_size);
         printf("\n");
 
-        for(int i =0; i<data_size; i++) {
-            printf("%x ", packet[4+i]);
-        }
+        //for(int i =0; i<data_size; i++) {
+          //  printf("%x ", packet[4+i]);
+        //}
         write(new_file, &packet[4], data_size);
     }
 

@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[]) {
   
-    send_file("rodriguez.jpg");
+    send_file("evereste.jpg");
 
     // int fd = llopen(COM0, SENDER);
 
