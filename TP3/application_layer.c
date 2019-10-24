@@ -6,7 +6,7 @@
 #include <string.h>
 #include "serial.h"
 
-#define BUFFER_SIZE 200
+#define BUFFER_SIZE 20000
 
 #define C_DATA 0x01
 #define C_START 0x02
@@ -27,10 +27,19 @@ struct tlv_filesize {
 };
 
 int receive_file(int port) {
+
+    int spfd = llopen(port, RECEIVER);
+
+    puts("Connecting.");
+    if (spfd < 0) {
+      puts("Failed to connenct.");
+      return -1;
+    }
+    puts("Connencted.");
+
     unsigned char packet[MAX_BUFFER_SIZE];
     unsigned int filename_size; //LValue
     unsigned int read_pointer=0;
-    int spfd = llopen(port, RECEIVER);
     int ud_size = sizeof(unsigned int);
 
     int new_file;
@@ -40,6 +49,7 @@ int receive_file(int port) {
     if(packet[0]==C_START) {
         printf("\nC_START RECEIVED\n");
     }
+
     if(packet[1]==T_NAME) {
         printf("\nT_NAME RECEIVED");
     }
@@ -47,7 +57,6 @@ int receive_file(int port) {
     read_pointer+=2;
 
     struct tlv_filename file_name;
-
     memcpy(&filename_size, packet+read_pointer, ud_size);
     read_pointer+=ud_size;
 
@@ -59,7 +68,6 @@ int receive_file(int port) {
 
     for(int i=0; i<filename_size; i++) {
         file_name.value[i] = packet[i+read_pointer];
-        printf("CONA:%c \n", packet[i+read_pointer]);
     }
 
     read_pointer+=filename_size;
@@ -91,6 +99,7 @@ int receive_file(int port) {
     // FICHEIRO E MERDAS DO ESTRONDO
     new_file = open(file_name.value, O_CREAT | O_WRONLY);
 
+    puts("Starting data transmission.");
     while(TRUE) {
         printf("\n");
         while(llread(spfd, packet)<0);
@@ -101,16 +110,14 @@ int receive_file(int port) {
         printf("N; %d\n", packet[1]);
 
         data_size = (unsigned int)packet[2]*256 + (unsigned int)packet[3];
-        printf("L2L1: %d\n", data_size);
-        printf("\n");
+        printf("L2L1: %d\n\n", data_size);
 
-        //for(int i =0; i<data_size; i++) {
-          //  printf("%x ", packet[4+i]);
-        //}
         write(new_file, &packet[4], data_size);
     }
 
     llread(spfd, packet);
+
+    llclose(spfd);
 
     close(new_file);
 
@@ -122,15 +129,22 @@ int send_file(int port, char* filePath){
 
     int fd = open(filePath, O_RDWR);
     if (fd < 0) {
+        perror(filePath);
         return -1;
     }
 
-    FILE* fp =fopen(filePath, "r");
+    FILE* fp = fopen(filePath, "r");
     fseek(fp, 0L, SEEK_END);
     unsigned int LValue = ftell(fp);
     fclose(fp);
 
+    puts("Connecting");
     int spfd = llopen(port, SENDER);
+    if (spfd < 0) {
+      puts("Failed to connect");
+      return -1;
+    }
+
 
     unsigned int nameSize = strlen(fileName);
     unsigned int ui_size = sizeof(unsigned int);
@@ -167,29 +181,62 @@ int send_file(int port, char* filePath){
 
     // Send Start Control Packet
     puts("Sending control");
-    llwrite(spfd, control_start, controlSize);
-    puts("sent");
+    int nr = llwrite(spfd, control_start, controlSize);
+
+    if (nr < 0) {
+      puts("Error transmitting.");
+      llclose(spfd);
+      return -1;
+    }
+
     int packetCounter = 0;
+    puts("Starting data transmission.");
     while(TRUE){
         unsigned char packet[4+BUFFER_SIZE];
         int nr = read(fd, packet+4, BUFFER_SIZE);
-        if( nr <= 0) break;
+
+        if( nr <= 0) {
+          if (nr == 0) {
+            break;
+          } else {
+            puts("Error reading file.");
+            llclose(spfd);
+            return -1;
+          }
+        };
+
         unsigned char header[4];
         packet[0] = C_DATA;
         packet[1] = packetCounter;
         packet[2] = nr / 256;
         packet[3] = nr % 256;
 
-        puts("Sending data\n");
-        llwrite(spfd, packet, nr+4);
+        nr = llwrite(spfd, packet, nr+4);
+
+        if (nr <= 0) {
+          if (nr == 0) {
+            break;
+          } else {
+            puts("Error transmitting.");
+            llclose(spfd);
+            return -1;
+          }
+        }
+
         packetCounter++;
 
     }
 
     // Send End Control Packet
-    control_start[0] = C_END;
     puts("Finishing");
-    llwrite(spfd, control_start, controlSize);
+    control_start[0] = C_END;
+    nr = llwrite(spfd, control_start, controlSize);
+
+    if (nr < 0) {
+      puts("Error transmitting.");
+      llclose(spfd);
+      return -1;
+    }
 
     llclose(spfd);
 

@@ -5,7 +5,7 @@
 #define COM1 1
 #define COM2 2
 
-#define MAX_BUFFER_SIZE 1024
+#define MAX_BUFFER_SIZE 60000
 
 #define TOO_BIG_ERROR -4
 

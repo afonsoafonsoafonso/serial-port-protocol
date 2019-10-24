@@ -10,7 +10,8 @@
 #include <signal.h>
 #include <string.h>
 
-#define BAUDRATE B38400
+//#define BAUDRATE B38400
+#define BAUDRATE B230400
 
 #define ESCAPE 0x7d
 
@@ -247,7 +248,7 @@ int open_sender(int fd) {
     } else {
       STOP = TRUE;
       timeout_count = 0;
-    }    
+    }
   }
 
   if (timeout_count >= MAX_TRIES) {
@@ -298,6 +299,7 @@ int llopen(int port, enum open_mode mode) {
 static unsigned char enumeration = C_N0;
 int llwrite(int fd, char *buffer, unsigned int length) {
   if (length > MAX_BUFFER_SIZE) {
+    puts("Buffer too big.");
     return TOO_BIG_ERROR;
   }
   unsigned int current_pointer = 0;
@@ -381,7 +383,7 @@ int llwrite(int fd, char *buffer, unsigned int length) {
         return i;
       } else if (header.control == C_REJ1 || header.control == C_REJ0) {
         continue;
-      } 
+      }
     }
   }
 }
@@ -395,13 +397,13 @@ int receiverDisconnectProtocol(int fd) {
 
     int res = readHeader(fd, &header);
     alarm(0);
-    
+
     if (res == TIMEOUT_ERROR) {
       return 0;
     } else if (res == -1) {
       continue;
     }
-    
+
     unsigned char c;
     read(fd, &c, 1);
     if (c != FLAG) {
@@ -431,7 +433,7 @@ int llread(int fd, char *buffer) {
       }
       continue;
     }
-  
+
     printAction(0, header.control, 0);
     if (header.control != waitingFor) {
       if (header.control == C_DISC) {
@@ -459,14 +461,14 @@ int llread(int fd, char *buffer) {
 
     int nr;
     int escape_mode = 0;
-    while (i < 512) {
+    while (i < MAX_BUFFER_SIZE) {
       nr = read(fd, &c, 1);
 
       if (c == FLAG) {
         break;
       }
       byteCount++;
-      
+
       if (c == ESCAPE) {
         escape_mode=1;
         continue;
@@ -503,7 +505,7 @@ int llread(int fd, char *buffer) {
     } else if (header.control == C_N1) {
       sendControl(fd, C_RR0);
       waitingFor = C_N0;
-    } 
+    }
 
 
     for (int j = 0; j < i-1; j++) {
@@ -574,7 +576,7 @@ void printAction(int sent, unsigned char c_byte, int n_data) {
         printf("Received %d data bytes.\n", n_data);
       return;
   }
-  if(sent==1) 
+  if(sent==1)
     printf("Sent %s byte.\n", type);
   else
     printf("Received %s byte.\n", type);
