@@ -6,7 +6,7 @@
 #include <string.h>
 #include "serial.h"
 
-#define BUFFER_SIZE 20000
+#define BUFFER_SIZE 256
 
 #define C_DATA 0x01
 #define C_START 0x02

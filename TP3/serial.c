@@ -10,8 +10,8 @@
 #include <signal.h>
 #include <string.h>
 
-//#define BAUDRATE B38400
-#define BAUDRATE B230400
+#define BAUDRATE B38400
+//#define BAUDRATE B230400
 
 #define ESCAPE 0x7d
 
