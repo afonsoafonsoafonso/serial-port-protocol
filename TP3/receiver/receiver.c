@@ -12,7 +12,9 @@ int main(int argc, char* argv[]) {
 
     int port = atoi(argv[1]);
 
-    receive_file(port);
+    int fd = receive_file(port);
+
+    close(fd);
 
     return 0;
 }

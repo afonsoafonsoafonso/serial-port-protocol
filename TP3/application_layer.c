@@ -119,9 +119,7 @@ int receive_file(int port) {
 
     llclose(spfd);
 
-    close(new_file);
-
-    return 0;
+    return new_file;
 }
 
 int send_file(int port, char* filePath){
