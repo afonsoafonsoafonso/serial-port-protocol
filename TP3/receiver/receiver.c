@@ -27,12 +27,14 @@ int main(int argc, char* argv[]) {
 
     if (argc >= 4) {
       float a = atof(argv[3]);
-      setA(a);
+      setTprop(a);
     }
 
     int fd = receive_file(port);
 
     close(fd);
+
+    printAVGa();
 
     return 0;
 }

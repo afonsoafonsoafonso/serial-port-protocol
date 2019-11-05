@@ -38,7 +38,9 @@
 #define BCC_ERROR -3
 
 static float FER = 0;
-static float a = 0;
+static float Tprop = 0;
+static float avgA = 0;
+static int frameCount = 0;
 
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
@@ -57,15 +59,14 @@ void setFER(float newFER) {
   FER = newFER;
 }
 
-void setA(float newA) {
-  a = newA;
+void setTprop(float newT) {
+  Tprop = newT;
 }
 
-unsigned int calculateTPropMicro() {
-  float bitLength = MAX_BUFFER_SIZE * 8;
-  printf("%f\n", bitLength/LITBAUD);
-  return (bitLength/LITBAUD) * a * 1000000;
+void printAVGa() {
+  printf("Avg a: %f\n", avgA);
 }
+
 
 int isError() {
   int res = rand();
@@ -530,9 +531,14 @@ int llread(int fd, char *buffer) {
 
     recvPackets++;
 
-    unsigned int sleepAmount = calculateTPropMicro();
-    printf("sleeping %u\n", sleepAmount);
-    usleep(sleepAmount);
+    int frameL = byteCount+5;
+    float Tf = (float) frameL / BAUDRATE;
+
+    usleep(Tprop);
+
+    float a = Tprop / Tf;
+    avgA += a;
+    avgA /= 2;
 
     if (isError()) {
       rejectedPackets++;
