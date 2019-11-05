@@ -34,7 +34,5 @@ int main(int argc, char* argv[]) {
 
     close(fd);
 
-    printAVGa();
-
     return 0;
 }

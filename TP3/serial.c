@@ -39,8 +39,6 @@
 
 static float FER = 0;
 static float Tprop = 0;
-static float avgA = 0;
-static int frameCount = 0;
 
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
@@ -60,13 +58,8 @@ void setFER(float newFER) {
 }
 
 void setTprop(float newT) {
-  Tprop = newT;
+  Tprop = newT*1000;
 }
-
-void printAVGa() {
-  printf("Avg a: %f\n", avgA);
-}
-
 
 int isError() {
   int res = rand();
@@ -457,10 +450,8 @@ int llread(int fd, char *buffer) {
       if (res != BCC_ERROR) {
         return -1;
       }
-      if (waitingFor == C_N0) {
-        sendControl(fd, C_REJ0);
-      } else if (waitingFor == C_N1) {
-        sendControl(fd, C_REJ1);
+      if (isError()) {
+        continue;
       }
       continue;
     }
@@ -531,14 +522,7 @@ int llread(int fd, char *buffer) {
 
     recvPackets++;
 
-    int frameL = byteCount+5;
-    float Tf = (float) frameL / BAUDRATE;
-
     usleep(Tprop);
-
-    float a = Tprop / Tf;
-    avgA += a;
-    avgA /= 2;
 
     if (isError()) {
       rejectedPackets++;

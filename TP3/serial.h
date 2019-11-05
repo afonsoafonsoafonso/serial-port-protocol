@@ -13,7 +13,6 @@ enum open_mode {SENDER, RECEIVER};
 
 void setFER(float newFER);
 void setTprop(float newT);
-void printAVGa();
 
 int llopen(int port, enum open_mode mode);
 int llwrite(int fd, char* buffer, unsigned int length);
