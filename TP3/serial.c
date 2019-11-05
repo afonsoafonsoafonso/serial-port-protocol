@@ -1,6 +1,7 @@
 #include "serial.h"
 #include "application_layer.h"
 #include <asm-generic/errno-base.h>
+#include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -8,10 +9,13 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define BAUDRATE B38400
+#define LITBAUD 38400
 //#define BAUDRATE B230400
+//#define LITBAUD 230400
 
 #define ESCAPE 0x7d
 
@@ -33,15 +37,42 @@
 #define TIMEOUT_ERROR -2
 #define BCC_ERROR -3
 
+static float FER = 0;
+static float a = 0;
+
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
 static struct sigaction oldSigAction;
 static struct sigaction sigHandler;
 
+int recvPackets = 0;
+int rejectedPackets = 0;
+
 struct header {
   unsigned char address;
   unsigned char control;
 };
+
+void setFER(float newFER) {
+  FER = newFER;
+}
+
+void setA(float newA) {
+  a = newA;
+}
+
+unsigned int calculateTPropMicro() {
+  float bitLength = MAX_BUFFER_SIZE * 8;
+  printf("%f\n", bitLength/LITBAUD);
+  return (bitLength/LITBAUD) * a * 1000000;
+}
+
+int isError() {
+  int res = rand();
+  float computed = (float) res / RAND_MAX;
+
+  return computed < FER;
+}
 
 void alarmHandler(int sig) {
   puts("Time out signal.");
@@ -302,10 +333,9 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     puts("Buffer too big.");
     return TOO_BIG_ERROR;
   }
-  unsigned int current_pointer = 0;
   while(1) {
     unsigned int byteCount = 0;
-    char message[7+length*2];
+    char message[7+(length*2)];
     message[0] = FLAG;
     message[1] = A;
     message[2] = enumeration;
@@ -314,8 +344,8 @@ int llwrite(int fd, char *buffer, unsigned int length) {
     unsigned char check = 0;
     int i = 0;
     int j = 0;
-    for (; i < length && current_pointer + i < length; i++) {
-      unsigned char byte = buffer[current_pointer+i];
+    for (; i < length; i++) {
+      unsigned char byte = buffer[i];
       byteCount++;
       if (byte == FLAG || byte == ESCAPE) {
         byteCount++;
@@ -455,13 +485,13 @@ int llread(int fd, char *buffer) {
     }
 
     unsigned char c;
-    unsigned char buf[MAX_BUFFER_SIZE + 1];
+    unsigned char buf[MAX_BUFFER_SIZE];
     int i = 0;
     unsigned int byteCount =0;
 
     int nr;
     int escape_mode = 0;
-    while (i < MAX_BUFFER_SIZE) {
+    while (i < MAX_BUFFER_SIZE*2) {
       nr = read(fd, &c, 1);
 
       if (c == FLAG) {
@@ -498,13 +528,28 @@ int llread(int fd, char *buffer) {
       continue;
     }
 
+    recvPackets++;
 
-    if (header.control == C_N0) {
-      sendControl(fd, C_RR1);
-      waitingFor = C_N1;
-    } else if (header.control == C_N1) {
-      sendControl(fd, C_RR0);
-      waitingFor = C_N0;
+    unsigned int sleepAmount = calculateTPropMicro();
+    printf("sleeping %u\n", sleepAmount);
+    usleep(sleepAmount);
+
+    if (isError()) {
+      rejectedPackets++;
+      if (header.control == C_N0) {
+        sendControl(fd, C_REJ0);
+      } else if (header.control == C_N1) {
+        sendControl(fd, C_REJ1);
+      }
+      continue;
+    } else {
+      if (header.control == C_N0) {
+        sendControl(fd, C_RR1);
+        waitingFor = C_N1;
+      } else if (header.control == C_N1) {
+        sendControl(fd, C_RR0);
+        waitingFor = C_N0;
+      }
     }
 
 
@@ -533,6 +578,8 @@ int llclose(int fd) {
       }
     }
   }
+
+  printf("%d/%d\n", rejectedPackets, recvPackets);
 
   close(fd);
   sigaction(SIGALRM, &oldSigAction, NULL);

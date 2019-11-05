@@ -6,7 +6,7 @@
 #include <string.h>
 #include "serial.h"
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE MAX_BUFFER_SIZE
 
 #define C_DATA 0x01
 #define C_START 0x02
@@ -190,8 +190,8 @@ int send_file(int port, char* filePath){
     int packetCounter = 0;
     puts("Starting data transmission.");
     while(TRUE){
-        unsigned char packet[4+BUFFER_SIZE];
-        int nr = read(fd, packet+4, BUFFER_SIZE);
+        unsigned char packet[BUFFER_SIZE];
+        int nr = read(fd, packet+4, BUFFER_SIZE-4);
 
         if( nr <= 0) {
           if (nr == 0) {
@@ -203,7 +203,6 @@ int send_file(int port, char* filePath){
           }
         };
 
-        unsigned char header[4];
         packet[0] = C_DATA;
         packet[1] = packetCounter;
         packet[2] = nr / 256;

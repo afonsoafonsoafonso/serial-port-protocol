@@ -11,6 +11,9 @@
 
 enum open_mode {SENDER, RECEIVER};
 
+void setFER(float newFER);
+void setA(float newA);
+
 int llopen(int port, enum open_mode mode);
 int llwrite(int fd, char* buffer, unsigned int length);
 int llread(int fd, char* buffer);
