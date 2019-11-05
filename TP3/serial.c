@@ -12,10 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BAUDRATE B38400
-#define LITBAUD 38400
-//#define BAUDRATE B230400
-//#define LITBAUD 230400
+//#define BAUDRATE B38400
+//#define LITBAUD 38400
+#define BAUDRATE B115200
+#define LITBAUD 115200
 
 #define ESCAPE 0x7d
 
