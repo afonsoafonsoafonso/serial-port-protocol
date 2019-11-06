@@ -15,13 +15,11 @@
 #define T_SIZE 11
 
 struct tlv_filename {
-    //unsigned char type;
     unsigned int length;
     unsigned char* value;
 };
 
 struct tlv_filesize {
-    //unsigned char type;
     unsigned int length;
     unsigned int value;
 };
@@ -96,7 +94,6 @@ int receive_file(int port) {
     int packet_counter = 0;
     unsigned int data_size;
 
-    // FICHEIRO E MERDAS DO ESTRONDO
     new_file = open(file_name.value, O_CREAT | O_WRONLY);
 
     puts("Starting data transmission.");
@@ -142,7 +139,6 @@ int send_file(int port, char* filePath){
       puts("Failed to connect");
       return -1;
     }
-
 
     unsigned int nameSize = strlen(fileName);
     unsigned int ui_size = sizeof(unsigned int);

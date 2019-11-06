@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#define BAUDRATE B38400
-//#define LITBAUD 38400
 #define BAUDRATE B115200
 #define LITBAUD 115200
 
@@ -37,9 +35,6 @@
 #define TIMEOUT_ERROR -2
 #define BCC_ERROR -3
 
-static float FER = 0;
-static float Tprop = 0;
-
 static struct termios oldtio, newtio;
 static enum open_mode current_mode;
 static struct sigaction oldSigAction;
@@ -52,21 +47,6 @@ struct header {
   unsigned char address;
   unsigned char control;
 };
-
-void setFER(float newFER) {
-  FER = newFER;
-}
-
-void setTprop(float newT) {
-  Tprop = newT*1000;
-}
-
-int isError() {
-  int res = rand();
-  float computed = (float) res / RAND_MAX;
-
-  return computed < FER;
-}
 
 void alarmHandler(int sig) {
   puts("Time out signal.");
@@ -450,9 +430,6 @@ int llread(int fd, char *buffer) {
       if (res != BCC_ERROR) {
         return -1;
       }
-      if (isError()) {
-        continue;
-      }
       continue;
     }
 
@@ -522,24 +499,12 @@ int llread(int fd, char *buffer) {
 
     recvPackets++;
 
-    usleep(Tprop);
-
-    if (isError()) {
-      rejectedPackets++;
-      if (header.control == C_N0) {
-        sendControl(fd, C_REJ0);
-      } else if (header.control == C_N1) {
-        sendControl(fd, C_REJ1);
-      }
-      continue;
-    } else {
-      if (header.control == C_N0) {
-        sendControl(fd, C_RR1);
-        waitingFor = C_N1;
-      } else if (header.control == C_N1) {
-        sendControl(fd, C_RR0);
-        waitingFor = C_N0;
-      }
+    if (header.control == C_N0) {
+      sendControl(fd, C_RR1);
+      waitingFor = C_N1;
+    } else if (header.control == C_N1) {
+      sendControl(fd, C_RR0);
+      waitingFor = C_N0;
     }
 
 
