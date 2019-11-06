@@ -1,6 +1,4 @@
 #include "serial.h"
-#include "application_layer.h"
-#include <asm-generic/errno-base.h>
 #include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
