@@ -154,8 +154,8 @@ int main(int argc, char **argv) {
   int i;
   char response[BUFF_SIZE];
   //FILE* f = fdopen(sockfd, "r");
-  for (int j = 0; j < 10; j++) {
-    printf("j = %d\n", i);
+  for (int x = 0; x < 10; x++) {
+    printf("x = %d\n", x);
     i = recv(sockfd, response, BUFF_SIZE, 0);
     write(STDOUT_FILENO, response, i);
   };
