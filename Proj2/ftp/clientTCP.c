@@ -162,6 +162,8 @@ int main(int argc, char **argv) {
         nlCount++;
       }
     }
+
+    write(STDOUT_FILENO, response, i);
   };
   puts("Connected");
 
