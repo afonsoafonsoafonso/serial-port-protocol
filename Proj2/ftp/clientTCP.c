@@ -153,11 +153,15 @@ int main(int argc, char **argv) {
 
   int i;
   char response[BUFF_SIZE];
-  //FILE* f = fdopen(sockfd, "r");
-  for (int x = 0; x < 10; x++) {
-    printf("x = %d\n", x);
+  int nlCount = 0;
+  while (nlCount < 10) {
     i = recv(sockfd, response, BUFF_SIZE, 0);
-    write(STDOUT_FILENO, response, i);
+
+    for (int c = 0; c < i; c++) {
+      if (response[c] == '\n') {
+        nlCount++;
+      }
+    }
   };
   puts("Connected");
 
