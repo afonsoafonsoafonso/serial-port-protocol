@@ -16,8 +16,8 @@
 
 #define BUFF_SIZE 1024
 #define FTP_PORT 21
-#define USER_STR "user anonymous\n"
-#define PASS_STR "pass pass\n"
+#define USER_STR "user "
+#define PASS_STR "pass "
 #define PASV "pasv\n"
 
 static sem_t semaphore;
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
   }
 
   char *server_addr = argv[1];
-  char *file_path = argv[2];
+  char *file_path = argv[4];
 
   struct hostent *host;
 
@@ -169,7 +169,9 @@ int main(int argc, char **argv) {
 
   // user anonymous 331
   puts("Login.");
-  int res = sendMessage(sockfd, USER_STR, strlen(USER_STR));
+  char userStr[strlen(USER_STR) + strlen(argv[2]) + 1];
+  sprintf(userStr, "%s%s\n", USER_STR, argv[2]);
+  int res = sendMessage(sockfd, userStr, strlen(userStr));
   if (res < 0) {
     end(sockfd);
   }
@@ -184,7 +186,9 @@ int main(int argc, char **argv) {
 
   // pass pass 230
 	puts("Sending password");
-  res = sendMessage(sockfd, PASS_STR, strlen(PASS_STR));
+  char passStr[strlen(PASS_STR) + strlen(argv[3]) + 1];
+  sprintf(passStr, "%s%s\n", PASS_STR, argv[3]);
+  res = sendMessage(sockfd, passStr, strlen(passStr));
   if (res < 0) {
     end(sockfd);
   }
