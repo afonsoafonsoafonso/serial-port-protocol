@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@
 #define USER_STR "user "
 #define PASS_STR "pass "
 #define PASV "pasv\n"
+
+static sem_t semaphore;
 
 int openSocket(const char *address, const int port) {
   struct sockaddr_in server_addr;
@@ -100,16 +103,27 @@ typedef struct {
   int port;
 } ConnectionInfo;
 
+void *thread_retrieveFile(void *arg) {
+  ConnectionInfo info = *(ConnectionInfo *)arg;
+
+  int socktfd = openSocket(info.address, info.port);
+
+  sem_post(&semaphore);
+
+  char buffer[BUFF_SIZE];
+  int nr;
+  while ((nr = recv(socktfd, buffer, BUFF_SIZE, 0)) > 0) {
+    write(STDOUT_FILENO, buffer, nr);
+  }
+
+  close(socktfd);
+
+  return 0;
+}
+
 void end(int sockfd) {
   sendMessage(sockfd, "quit", 5);
   exit(0);
-}
-
-int startsWith(const char *pre, const char *str)
-{
-    size_t lenpre = strlen(pre),
-           lenstr = strlen(str);
-    return lenstr < lenpre ? 0 : memcmp(pre, str, lenpre) == 0;
 }
 
 int main(int argc, char **argv) {
@@ -137,17 +151,19 @@ int main(int argc, char **argv) {
   puts("Connecting.");
   int sockfd = openSocket(server_ip, FTP_PORT);
 
+  int i;
   char response[BUFF_SIZE];
-  FILE* sock = fdopen(sockfd, "r");
-  int header = 1;
-  while (header) {
-    fgets(response, BUFF_SIZE, sock);
+  int nlCount = 0;
+  while (nlCount < 10) {
+    i = recv(sockfd, response, BUFF_SIZE, 0);
 
-    //write(STDOUT_FILENO, response, strlen(response));
-
-    if (startsWith("220 ", response)) {
-      header = 0;
+    for (int c = 0; c < i; c++) {
+      if (response[c] == '\n') {
+        nlCount++;
+      }
     }
+
+    write(STDOUT_FILENO, response, i);
   };
   puts("Connected");
 
@@ -212,7 +228,11 @@ int main(int argc, char **argv) {
   connection.address = server_ip;
   connection.port = port1 * 256 + port2;
 
-  int recvSocktfd = openSocket(connection.address, connection.port);
+  sem_init(&semaphore, 0, 0);
+  pthread_t thread;
+  pthread_create(&thread, NULL, thread_retrieveFile, (void *)&connection);
+
+  sem_wait(&semaphore);
 
   // retr
   char file_request[6 + strlen(file_path)];
@@ -236,13 +256,7 @@ int main(int argc, char **argv) {
     end(sockfd);
   }
 
-  char buffer[BUFF_SIZE];
-  int nr;
-  while ((nr = recv(recvSocktfd, buffer, BUFF_SIZE, 0)) > 0) {
-    write(STDOUT_FILENO, buffer, nr);
-  }
-
-  close(recvSocktfd);
+  pthread_join(thread, NULL);
 
   puts("Ending");
 
