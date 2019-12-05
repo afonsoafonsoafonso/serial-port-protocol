@@ -50,23 +50,9 @@ int openSocket(const char *address, const int port) {
   return sockfd;
 }
 
-void flushSocket(int sockfd) {
-	char buf[100];
-	int res;
-	do {
-		res = recv(sockfd, buf, 100, MSG_DONTWAIT);
-		if (res <= 0) {
-			return;
-		}
-		write(STDOUT_FILENO, buf, res);
-	} while (res > 0);
-}
-
 int sendMessage(int sockfd, char *message, unsigned int length) {
   int nr = 0;
   size_t res;
-  //puts("Writing");
-	flushSocket(sockfd);
   do {
     res = send(sockfd, message, length, 0);
     if (res < 0) {
@@ -78,15 +64,15 @@ int sendMessage(int sockfd, char *message, unsigned int length) {
   return nr;
 }
 
-int readResponseLine(int sockfd, char *response) {
+int readResponseLine(FILE* sock, char *response) {
   //puts("Reading response.");
-  size_t read = recv(sockfd, response, BUFF_SIZE, 0);
+  char* str = fgets(response, BUFF_SIZE, sock);
 
-  if (read < 0) {
+  if (str == NULL) {
     return -1;
   }
 
-  return read;
+  return strlen(response);
 }
 
 int getResponseCode(char *response) {
@@ -126,10 +112,16 @@ void end(int sockfd) {
   exit(0);
 }
 
+int startsWith(const char *pre, const char *str) {
+    size_t lenpre = strlen(pre),
+           lenstr = strlen(str);
+    return lenstr < lenpre ? 0 : memcmp(pre, str, lenpre) == 0;
+}
+
 int main(int argc, char **argv) {
 
-  if (argc < 3) {
-    puts("Usage: clientTPC {server_address} {file}");
+  if (argc < 5) {
+    puts("Usage: clientTPC {server_address} {username} {password} {file}");
     return 0;
   }
 
@@ -150,20 +142,16 @@ int main(int argc, char **argv) {
 
   puts("Connecting.");
   int sockfd = openSocket(server_ip, FTP_PORT);
+  FILE* sockFile = fdopen(sockfd, "r");
 
-  int i;
   char response[BUFF_SIZE];
-  int nlCount = 0;
-  while (nlCount < 10) {
-    i = recv(sockfd, response, BUFF_SIZE, 0);
+  int header = 1;
+  while (header) {
+    fgets(response, BUFF_SIZE, sockFile);
 
-    for (int c = 0; c < i; c++) {
-      if (response[c] == '\n') {
-        nlCount++;
-      }
+    if (startsWith("220 ", response)) {
+      header = 0;
     }
-
-    write(STDOUT_FILENO, response, i);
   };
   puts("Connected");
 
@@ -176,7 +164,7 @@ int main(int argc, char **argv) {
     end(sockfd);
   }
 
-  if ((res = readResponseLine(sockfd, response)) < 0) {
+  if ((res = readResponseLine(sockFile, response)) < 0) {
     end(sockfd);
   }
 
@@ -193,7 +181,7 @@ int main(int argc, char **argv) {
     end(sockfd);
   }
 
-  if ((res = readResponseLine(sockfd, response)) < 0) {
+  if ((res = readResponseLine(sockFile, response)) < 0) {
     end(sockfd);
   }
 
@@ -210,7 +198,7 @@ int main(int argc, char **argv) {
     end(sockfd);
   }
 
-  if ((res = readResponseLine(sockfd, response)) < 0) {
+  if ((res = readResponseLine(sockFile, response)) < 0) {
     end(sockfd);
   }
 
@@ -237,13 +225,13 @@ int main(int argc, char **argv) {
   // retr
   char file_request[6 + strlen(file_path)];
   sprintf(file_request, "retr %s\n", file_path);
-  printf("Retrieving: %s\n", file_path);
+  printf("Retrieving: %s\n\n", file_path);
   res = sendMessage(sockfd, file_request, strlen(file_request));
   if (res < 0) {
     end(sockfd);
   }
 
-  if ((res = readResponseLine(sockfd, response)) < 0) {
+  if ((res = readResponseLine(sockFile, response)) < 0) {
     end(sockfd);
   }
 
@@ -252,13 +240,13 @@ int main(int argc, char **argv) {
     end(sockfd);
   }
 
-  if ((res = readResponseLine(sockfd, response)) < 0) {
+  if ((res = readResponseLine(sockFile, response)) < 0) {
     end(sockfd);
   }
 
   pthread_join(thread, NULL);
 
-  puts("Ending");
+  puts("\nEnding");
 
   end(sockfd);
 }
