@@ -47,23 +47,9 @@ int openSocket(const char *address, const int port) {
   return sockfd;
 }
 
-void flushSocket(int sockfd) {
-	char buf[100];
-	int res;
-	do {
-		res = recv(sockfd, buf, 100, MSG_DONTWAIT);
-		if (res <= 0) {
-			return;
-		}
-		write(STDOUT_FILENO, buf, res);
-	} while (res > 0);
-}
-
 int sendMessage(int sockfd, char *message, unsigned int length) {
   int nr = 0;
   size_t res;
-  //puts("Writing");
-	flushSocket(sockfd);
   do {
     res = send(sockfd, message, length, 0);
     if (res < 0) {
@@ -76,7 +62,6 @@ int sendMessage(int sockfd, char *message, unsigned int length) {
 }
 
 int readResponseLine(int sockfd, char *response) {
-  //puts("Reading response.");
   size_t read = recv(sockfd, response, BUFF_SIZE, 0);
 
   if (read < 0) {
