@@ -120,13 +120,25 @@ int startsWith(const char *pre, const char *str) {
 
 int main(int argc, char **argv) {
 
-  if (argc < 5) {
-    puts("Usage: clientTPC {server_address} {username} {password} {file}");
+  if (argc < 2) {
+    puts("Usage: clientTPC ftp://[{username}:{password}@]{ftp_server_address}/{file_path}");
     return 0;
   }
 
-  char *server_addr = argv[1];
-  char *file_path = argv[4];
+  char server_addr[BUFF_SIZE];
+  char file_path[BUFF_SIZE];
+  char username[BUFF_SIZE];
+  char password[BUFF_SIZE];
+
+  puts(argv[1]);
+  if (sscanf(argv[1], "ftp://%[^:]:%[^@]@%[^/]/%[^\n]", username, password, server_addr, file_path) < 4) {
+    if (sscanf(argv[1], "ftp://%99[^/]/%99[^\n]", server_addr, file_path) < 2) {
+      puts("Invalid url.");
+      exit(1);
+    }
+    strcpy(username, "anonymous");
+    strcpy(password, "pass");
+  }
 
   struct hostent *host;
 
@@ -157,8 +169,8 @@ int main(int argc, char **argv) {
 
   // user anonymous 331
   puts("Login.");
-  char userStr[strlen(USER_STR) + strlen(argv[2]) + 1];
-  sprintf(userStr, "%s%s\n", USER_STR, argv[2]);
+  char userStr[strlen(USER_STR) + strlen(username) + 1];
+  sprintf(userStr, "%s%s\n", USER_STR, username);
   int res = sendMessage(sockfd, userStr, strlen(userStr));
   if (res < 0) {
     end(sockfd);
@@ -174,8 +186,8 @@ int main(int argc, char **argv) {
 
   // pass pass 230
 	puts("Sending password");
-  char passStr[strlen(PASS_STR) + strlen(argv[3]) + 1];
-  sprintf(passStr, "%s%s\n", PASS_STR, argv[3]);
+  char passStr[strlen(PASS_STR) + strlen(password) + 1];
+  sprintf(passStr, "%s%s\n", PASS_STR, password);
   res = sendMessage(sockfd, passStr, strlen(passStr));
   if (res < 0) {
     end(sockfd);
