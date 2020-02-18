@@ -1,7 +1,0 @@
-tux5
-router: routerconfigmar
-switch: switchconfigmar
-
-gnu5
-router: 3mieic5moiafren
-switch: 3mieic5moiafren
